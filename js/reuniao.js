@@ -33,26 +33,65 @@ function reuniaoDe(s, fazenda) {
     (r.fazenda_id || '') === (fazenda || ''));
 }
 
+function atividadesEntre(de, ate, fazenda) {
+  return atividadesVisiveis().filter(a => a.data >= de && a.data <= ate &&
+    (!fazenda || fazendaDoLocal(a.local_id) === fazenda))
+    .sort((a, b) => a.data.localeCompare(b.data) ||
+      q.nome('locais', a.local_id).localeCompare(q.nome('locais', b.local_id), 'pt-BR'));
+}
+
+/* Período da reunião: uma semana do quadro (S1–S4) ou datas escolhidas. */
+function periodoSemana(s) {
+  const de = inicioSemana(s.ano, s.mes, s.semana), ate = fimSemana(s.ano, s.mes, s.semana);
+  return { de, ate, semana: s, titulo: rotuloSemana(s), faixa: `${br(de)} a ${br(ate)}`,
+           arquivo: `S${s.semana}_${MESES[s.mes - 1]}_${s.ano}` };
+}
+function periodoDatas(de, ate) {
+  const dias = difDias(de, ate) + 1;
+  return { de, ate, dias, semana: chaveSemana(de), titulo: `${br(de)} a ${br(ate)}`,
+           faixa: `${dias} dia${dias > 1 ? 's' : ''}`, arquivo: `${de}_a_${ate}` };
+}
+
 TELAS.reuniao = el => {
   document.body.classList.remove('modo-quadro');
   const E = estadoReuniao;
   if (!E.semana) E.semana = chaveSemana(hoje());
-  const s = E.semana;
-  const ant = semanaVizinha(s, -1), prox = semanaVizinha(s, 1);
-  const atual = atividadesDaSemana(s, E.fazenda);
+  const livre = !!(E.de && E.ate);
+  let P, ANT, PROX;
+  if (livre) {
+    P = periodoDatas(E.de, E.ate);
+    ANT = periodoDatas(somaDias(E.de, -P.dias), somaDias(E.de, -1));
+    PROX = periodoDatas(somaDias(E.ate, 1), somaDias(E.ate, P.dias));
+  } else {
+    P = periodoSemana(E.semana);
+    ANT = periodoSemana(semanaVizinha(E.semana, -1));
+    PROX = periodoSemana(semanaVizinha(E.semana, 1));
+  }
+  const s = P.semana;   // as anotações ficam guardadas na semana em que o período começa
+  const atual = atividadesEntre(P.de, P.ate, E.fazenda);
+  const listaAnt = atividadesEntre(ANT.de, ANT.ate, E.fazenda);
+  const listaProx = atividadesEntre(PROX.de, PROX.ate, E.fazenda);
   const ind = indicadores(atual);
-  const indAnt = indicadores(atividadesDaSemana(ant, E.fazenda));
+  const indAnt = indicadores(listaAnt);
   const reu = reuniaoDe(s, E.fazenda) || {};
+  const nomeAnt = livre ? 'Período anterior' : 'Semana anterior';
+  const nomeAtual = livre ? 'Período escolhido' : 'Esta semana';
+  const nomeProx = livre ? 'Período seguinte' : 'Próxima semana';
 
   el.innerHTML = `
     <h1>Reunião semanal</h1>
     <div class="pc-navsem">
-      <button type="button" class="btn neutro" id="rn-ant" aria-label="Semana anterior">‹</button>
-      <div><strong>${esc(rotuloSemana(s))}</strong>
-        <small>${br(inicioSemana(s.ano, s.mes, s.semana))} a ${br(fimSemana(s.ano, s.mes, s.semana))}</small></div>
-      <button type="button" class="btn neutro" id="rn-prox" aria-label="Próxima semana">›</button>
+      <button type="button" class="btn neutro" id="rn-ant" aria-label="${nomeAnt}">‹</button>
+      <div><strong>${esc(P.titulo)}</strong><small>${esc(P.faixa)}</small></div>
+      <button type="button" class="btn neutro" id="rn-prox" aria-label="${nomeProx}">›</button>
       <button type="button" class="btn-fantasma" id="rn-hoje">Semana atual</button>
       <select id="rn-faz">${opcoes(fazendasOrdenadas(), E.fazenda, 'Todas as fazendas')}</select>
+    </div>
+    <div class="pc-periodo">
+      <label>Data inicial <input type="date" id="rn-de" value="${esc(P.de)}"></label>
+      <label>Data final <input type="date" id="rn-ate" value="${esc(P.ate)}"></label>
+      <button type="button" class="btn" id="rn-aplicar">Ver período</button>
+      ${livre ? '<span class="etq neutro">período escolhido</span>' : ''}
     </div>
 
     <div class="painel pc-ind">
@@ -61,13 +100,13 @@ TELAS.reuniao = el => {
       <div class="cartao"><b>${ind.andamento + ind.planejado}</b><span>a fazer</span></div>
       <div class="cartao ${ind.atrasado ? 'alerta' : ''}"><b>${ind.atrasado}</b><span>atrasadas</span></div>
       <div class="cartao"><b>${ind.pct}%</b><span>cumprimento</span></div>
-      <div class="cartao"><b>${indAnt.pct}%</b><span>semana anterior</span></div>
+      <div class="cartao"><b>${indAnt.pct}%</b><span>${nomeAnt.toLowerCase()}</span></div>
     </div>
 
     <div class="pc-reuniao">
-      <section>${blocoSemana('Semana anterior — programado × feito', ant, E.fazenda, true)}</section>
-      <section>${blocoSemana('Esta semana', s, E.fazenda)}</section>
-      <section>${blocoSemana('Próxima semana', prox, E.fazenda)}</section>
+      <section>${blocoPeriodo(nomeAnt + ' — programado × feito', ANT, listaAnt, true)}</section>
+      <section>${blocoPeriodo(nomeAtual, P, atual)}</section>
+      <section>${blocoPeriodo(nomeProx, PROX, listaProx)}</section>
     </div>
 
     <section class="pc-cartao">
@@ -85,13 +124,24 @@ TELAS.reuniao = el => {
       </div>
     </section>`;
 
-  const mudar = n => { E.semana = n; TELAS.reuniao(el); };
-  el.querySelector('#rn-ant').onclick = () => mudar(ant);
-  el.querySelector('#rn-prox').onclick = () => mudar(prox);
-  el.querySelector('#rn-hoje').onclick = () => mudar(chaveSemana(hoje()));
+  const ir = alvo => {
+    if (livre) { E.de = alvo.de; E.ate = alvo.ate; } else { E.semana = alvo.semana; }
+    TELAS.reuniao(el);
+  };
+  el.querySelector('#rn-ant').onclick = () => ir(ANT);
+  el.querySelector('#rn-prox').onclick = () => ir(PROX);
+  el.querySelector('#rn-hoje').onclick = () => { E.de = E.ate = null; E.semana = chaveSemana(hoje()); TELAS.reuniao(el); };
   el.querySelector('#rn-faz').onchange = e => { E.fazenda = e.target.value; TELAS.reuniao(el); };
+  el.querySelector('#rn-aplicar').onclick = () => {
+    const de = el.querySelector('#rn-de').value, ate = el.querySelector('#rn-ate').value;
+    if (!de || !ate) return aviso('Escolha a data inicial e a data final.', true);
+    if (ate < de) return aviso('A data final não pode ser antes da inicial.', true);
+    if (difDias(de, ate) > 366) return aviso('Escolha um período de até um ano.', true);
+    E.de = de; E.ate = ate;
+    TELAS.reuniao(el);
+  };
   el.querySelector('#rn-lancar').onclick = () => {
-    window.baseLancamento = { data: mesmaSemana(hoje(), s) ? hoje() : inicioSemana(s.ano, s.mes, s.semana) };
+    window.baseLancamento = { data: (hoje() >= P.de && hoje() <= P.ate) ? hoje() : P.de };
     irPara('lancar');
   };
 
@@ -113,36 +163,35 @@ TELAS.reuniao = el => {
     await gravar('reunioes', r);
     return r;
   };
+  const rotuloPdf = `${P.titulo} (${P.faixa})`;
   el.querySelector('#rn-salvar').onclick = async () => { await salvarNotas(); aviso('Anotações salvas.'); };
   el.querySelector('#rn-ficha').onclick = () => {
     const itens = atual.filter(a => statusDe(a) !== 'Cancelado');
-    if (!itens.length) return aviso('Nada programado nesta semana.', true);
+    if (!itens.length) return aviso('Nada programado nesse período.', true);
     gerarRelatorio({ tipo: 'ficha', titulo: 'Ficha de conferência das atividades',
-      periodo: rotuloSemana(s) + ` (${br(inicioSemana(s.ano, s.mes, s.semana))} a ${br(fimSemana(s.ano, s.mes, s.semana))})`,
-      fazenda: E.fazenda, lista: itens, arquivo: `Ficha_S${s.semana}_${MESES[s.mes - 1]}_${s.ano}` });
+      periodo: rotuloPdf, fazenda: E.fazenda, lista: itens, arquivo: 'Ficha_' + P.arquivo });
   };
   el.querySelector('#rn-pdf').onclick = async () => {
     const r = await salvarNotas();
     gerarRelatorio({
       titulo: 'Relatório da reunião semanal',
-      periodo: rotuloSemana(s) + ` (${br(inicioSemana(s.ano, s.mes, s.semana))} a ${br(fimSemana(s.ano, s.mes, s.semana))})`,
+      periodo: rotuloPdf,
       fazenda: E.fazenda,
-      lista: atividadesDaSemana(s, E.fazenda),
+      lista: atual,
       blocos: [
-        { titulo: 'Semana anterior — ' + rotuloSemana(ant), lista: atividadesDaSemana(ant, E.fazenda) },
-        { titulo: 'Próxima semana — ' + rotuloSemana(prox), lista: atividadesDaSemana(prox, E.fazenda) }
+        { titulo: `${nomeAnt} — ${ANT.titulo}`, lista: listaAnt },
+        { titulo: `${nomeProx} — ${PROX.titulo}`, lista: listaProx }
       ],
       reuniao: r,
-      arquivo: `Reuniao_S${s.semana}_${MESES[s.mes - 1]}_${s.ano}`
+      arquivo: 'Reuniao_' + P.arquivo
     });
   };
 };
 
-function blocoSemana(titulo, s, fazenda, retrospectiva = false) {
-  const lista = atividadesDaSemana(s, fazenda);
+function blocoPeriodo(titulo, P, lista, retrospectiva = false) {
   const ind = indicadores(lista);
   return `<h2>${esc(titulo)}</h2>
-    <p class="sub">${esc(rotuloSemana(s))} · ${ind.total} programada${ind.total === 1 ? '' : 's'}${retrospectiva ? ` · ${ind.concluido} feita${ind.concluido === 1 ? '' : 's'} (${ind.pct}%)` : ''}</p>
+    <p class="sub">${esc(P.titulo)} · ${ind.total} programada${ind.total === 1 ? '' : 's'}${retrospectiva ? ` · ${ind.concluido} feita${ind.concluido === 1 ? '' : 's'} (${ind.pct}%)` : ''}</p>
     ${lista.length ? '<ul class="lista pc-rlista">' + lista.map(a => {
       const st = statusDe(a);
       return `<li class="${STATUS_CLASSE[st]}">
@@ -160,4 +209,4 @@ function blocoSemana(titulo, s, fazenda, retrospectiva = false) {
     }).join('') + '</ul>' : '<div class="vazio"><p>Nada programado.</p></div>'}`;
 }
 
-Object.assign(window, { atividadesDaSemana, indicadores });
+Object.assign(window, { atividadesDaSemana, atividadesEntre, indicadores });
