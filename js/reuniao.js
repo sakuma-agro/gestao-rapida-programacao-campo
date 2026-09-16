@@ -80,6 +80,7 @@ TELAS.reuniao = el => {
       <div class="acoes">
         <button type="button" class="btn" id="rn-salvar">Salvar anotações</button>
         <button type="button" class="btn secundario" id="rn-pdf">Relatório da reunião (PDF)</button>
+        <button type="button" class="btn secundario" id="rn-ficha">Ficha de conferência (imprimir)</button>
         <button type="button" class="btn secundario" id="rn-lancar">Lançar atividade</button>
       </div>
     </section>`;
@@ -113,6 +114,13 @@ TELAS.reuniao = el => {
     return r;
   };
   el.querySelector('#rn-salvar').onclick = async () => { await salvarNotas(); aviso('Anotações salvas.'); };
+  el.querySelector('#rn-ficha').onclick = () => {
+    const itens = atual.filter(a => statusDe(a) !== 'Cancelado');
+    if (!itens.length) return aviso('Nada programado nesta semana.', true);
+    gerarRelatorio({ tipo: 'ficha', titulo: 'Ficha de conferência das atividades',
+      periodo: rotuloSemana(s) + ` (${br(inicioSemana(s.ano, s.mes, s.semana))} a ${br(fimSemana(s.ano, s.mes, s.semana))})`,
+      fazenda: E.fazenda, lista: itens, arquivo: `Ficha_S${s.semana}_${MESES[s.mes - 1]}_${s.ano}` });
+  };
   el.querySelector('#rn-pdf').onclick = async () => {
     const r = await salvarNotas();
     gerarRelatorio({

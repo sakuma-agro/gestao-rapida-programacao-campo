@@ -171,8 +171,9 @@ function desenharConfig(el) {
   el.innerHTML = `
     <h1>Configurações</h1>
     <p class="sub">Quem entra na Programação Campo e quais fazendas enxerga. O login é o mesmo dos
-      outros apps Gestão Rápida — pessoa nova é criada no Gestão Rápida (Pessoas ou Manutenções).
+      outros apps Gestão Rápida. Toque no nome para gerar senha nova ou tirar o acesso.
       Sem nenhuma fazenda marcada, a pessoa vê todas.</p>
+    <div class="acoes"><button type="button" class="btn" id="cf-nova">Nova pessoa</button></div>
     <div class="rolagem">
     <table class="tabela"><thead><tr>
       <th>Pessoa</th><th class="ce">Acesso</th>
@@ -182,7 +183,7 @@ function desenharConfig(el) {
       const adm = u.admin || u.perfil === 'ADMINISTRADOR';
       const tem = adm || (u.modulos || []).includes('programacao');
       return `<tr>
-        <td><strong>${esc(u.nome || u.email)}</strong>${u.id === eu ? ' <span class="etq ok">você</span>' : ''}
+        <td><button type="button" class="pc-nome" data-pessoa="${u.id}">${esc(u.nome || u.email)}</button>${u.id === eu ? ' <span class="etq ok">você</span>' : ''}
           ${adm ? ' <span class="etq neutro">administrador</span>' : ''}
           <br><small>${esc(u.usuario || u.email || '')}</small>
           ${u.ativo === false ? '<br><span class="etq inativo">inativo</span>' : ''}</td>
@@ -194,6 +195,10 @@ function desenharConfig(el) {
       </tr>`;
     }).join('')}
     </tbody></table></div>`;
+
+  const recarregar = () => TELAS.config(el);
+  $('#cf-nova').onclick = () => novaPessoa(recarregar);
+  $$('[data-pessoa]').forEach(b => b.onclick = () => fichaPessoa(gente.find(x => x.id === b.dataset.pessoa), recarregar));
 
   $$('.cf-acesso').forEach(cx => cx.onchange = async () => {
     const u = gente.find(x => x.id === cx.dataset.id);

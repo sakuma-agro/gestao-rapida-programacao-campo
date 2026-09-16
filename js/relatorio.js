@@ -63,6 +63,7 @@ TELAS.relatorio = el => {
     </div>
     <div class="acoes">
       <button type="button" class="btn" id="rl-pdf">Gerar PDF</button>
+      <button type="button" class="btn secundario" id="rl-ficha">Ficha de conferência (imprimir)</button>
       <button type="button" class="btn secundario" id="rl-excel">Exportar Excel</button>
     </div>
     <div id="rl-previa"></div>`;
@@ -96,6 +97,13 @@ TELAS.relatorio = el => {
   }
   previa();
 
+  el.querySelector('#rl-ficha').onclick = () => {
+    const { p, lista } = listaAtual();
+    const itens = lista.filter(a => statusDe(a) !== 'Cancelado');
+    if (!itens.length) return aviso('Nenhuma atividade nesse período.', true);
+    gerarRelatorio({ tipo: 'ficha', titulo: 'Ficha de conferência das atividades', periodo: p.rotulo,
+                     fazenda: f.fazenda, lista: itens, arquivo: 'Ficha_' + p.arquivo });
+  };
   el.querySelector('#rl-excel').onclick = () => { const { p, lista } = listaAtual(); exportarExcel(lista, 'Programacao_' + p.arquivo); };
   el.querySelector('#rl-pdf').onclick = () => {
     const { p, lista } = listaAtual();
@@ -304,7 +312,7 @@ async function gerarRelatorio(o) {
   if (!window.jspdf || !window.jspdf.jsPDF) return aviso('O gerador de PDF não carregou. Abra o app com internet uma vez.', true);
   aviso('Montando o PDF…');
   let doc;
-  try { doc = await montarPdf(o); }
+  try { doc = o.tipo === 'ficha' ? await montarFicha(o) : await montarPdf(o); }
   catch (e) { console.error(e); return aviso('Não consegui montar o PDF: ' + e.message, true); }
   const nome = (o.arquivo || 'Relatorio') .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_') + '.pdf';
   const blob = doc.output('blob');
