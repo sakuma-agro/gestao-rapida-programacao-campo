@@ -198,11 +198,11 @@ function blocoPeriodo(titulo, P, lista, retrospectiva = false) {
     <p class="sub">${esc(P.titulo)} · ${ind.total} programada${ind.total === 1 ? '' : 's'}${retrospectiva ? ` · ${ind.concluido} feita${ind.concluido === 1 ? '' : 's'} (${ind.pct}%)` : ''}</p>
     ${lista.length ? '<ul class="lista pc-rlista">' + lista.map(a => {
       const st = statusDe(a);
-      return `<li class="${STATUS_CLASSE[st]}${a.prioridade ? ' pri-' + a.prioridade : ''}">
+      return `<li class="${STATUS_CLASSE[st]}">
         <div class="info"><strong>${esc(nomeAtividade(a))} – ${esc(q.nome('culturas', a.cultura_id))}</strong>
           <small>${br(a.data)} (${esc(diaSemana(a.data))}) · ${esc(q.nome('locais', a.local_id))}${a.plantio ? ' · Plantio ' + esc(a.plantio) : ''}</small>
           <small>${esc(q.nome('operadores', a.operador_id) || 'operador a definir')}${maqImpl(a) ? ' · ' + esc(maqImpl(a)) : ''}</small></div>
-        ${etqStatus(st)} ${etqPrioridade(a, true)}
+        ${etqStatus(st)}
         <div class="pc-mini">
           ${st !== 'Concluído' && st !== 'Cancelado' ? `<button type="button" class="btn" data-rid="${a.id}" data-ac="concluir">Concluir</button>` : ''}
           ${pendente(st) && st !== 'Em andamento' ? `<button type="button" class="btn secundario" data-rid="${a.id}" data-ac="andamento">Em andamento</button>` : ''}

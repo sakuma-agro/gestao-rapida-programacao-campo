@@ -21,7 +21,6 @@ function formAtividade(alvo, base = {}, aoSalvar) {
       ${campoLista('Atividade *', 'tipo_id', q.ordenado('tipos_atividade'), a.tipo_id)}
       ${campoLista('Operador', 'operador_id', q.ordenado('operadores'), a.operador_id, '— a definir —')}
       ${campoLista('Status *', 'status', STATUS, a.status, null)}
-      ${campoLista('Prioridade', 'prioridade', PRIORIDADES, a.prioridade, 'Normal')}
       ${campoLista('Máquina', 'maquina_id', q.ordenado('maquinas'), a.maquina_id, '— nenhuma —')}
       ${campoLista('Implemento', 'implemento_id', q.ordenado('implementos'), a.implemento_id, '— nenhum —')}
       ${campoTexto('Horas previstas', 'horas_previstas', fmtNum(a.horas_previstas), 'text', '', 'inputmode="decimal"')}
@@ -94,7 +93,6 @@ function formAtividade(alvo, base = {}, aoSalvar) {
     const reg = Object.assign({}, a, {
       data: f.data, local_id: f.local_id, cultura_id: f.cultura_id, tipo_id: f.tipo_id,
       operador_id: f.operador_id, status: f.status || 'Planejado', plantio: f.plantio,
-      prioridade: f.prioridade || null,
       maquina_id: f.maquina_id, implemento_id: f.implemento_id,
       horas_previstas: num(f.horas_previstas), horas_realizadas: num(f.horas_realizadas),
       observacoes: f.observacoes, ativo: true
@@ -148,7 +146,7 @@ async function abrirAtividade(id, depois) {
   if (!a) return aviso('Atividade não encontrada.', true);
   const st = statusDe(a);
   abrirModal(`${nomeAtividade(a)} · ${q.nome('locais', a.local_id)}`, `
-    <p class="sub">${br(a.data)} (${esc(diaSemana(a.data))}) · ${esc(rotuloSemana(chaveSemana(a.data)))} · ${etqStatus(a)} ${etqPrioridade(a)}</p>
+    <p class="sub">${br(a.data)} (${esc(diaSemana(a.data))}) · ${esc(rotuloSemana(chaveSemana(a.data)))} · ${etqStatus(a)}</p>
     <div class="acoes pc-rapidas">
       ${st !== 'Concluído' ? '<button type="button" class="btn" data-ac="concluir">Concluir</button>' : ''}
       ${st !== 'Em andamento' && st !== 'Concluído' ? '<button type="button" class="btn secundario" data-ac="andamento">Em andamento</button>' : ''}
@@ -275,7 +273,6 @@ function filtrarAtividades(f) {
     if (f.tipo && a.tipo_id !== f.tipo) return false;
     if (f.operador && a.operador_id !== f.operador) return false;
     if (f.status === 'pendentes' ? !pendente(statusDe(a)) : (f.status && statusDe(a) !== f.status)) return false;
-    if (f.prioridade && (a.prioridade || 'normal') !== f.prioridade) return false;
     if (t) {
       const txt = [nomeAtividade(a), q.nome('locais', a.local_id), q.nome('culturas', a.cultura_id), a.plantio,
         q.nome('operadores', a.operador_id), maqImpl(a), a.observacoes].join(' ').toLowerCase();
@@ -305,7 +302,6 @@ TELAS.atividades = el => {
       <select data-f="tipo">${opcoes(q.ordenado('tipos_atividade'), f.tipo, 'Todas as atividades')}</select>
       <select data-f="operador">${opcoes(q.ordenado('operadores'), f.operador, 'Todos os operadores')}</select>
       <select data-f="status">${opcoes([{ id: 'pendentes', nome: 'Pendentes' }, ...STATUS_TODOS], f.status, 'Todos os status')}</select>
-      <select data-f="prioridade">${opcoes([...PRIORIDADES, { id: 'normal', nome: 'Normal' }], f.prioridade, 'Todas as prioridades')}</select>
       <input type="search" data-f="busca" placeholder="Buscar…" value="${esc(f.busca)}">
       <button type="button" class="btn-fantasma" id="at-limpar">Limpar</button>
     </div>
@@ -358,7 +354,7 @@ TELAS.atividades = el => {
         <td class="ce"><input type="checkbox" class="at-cx" value="${a.id}"></td>
         <td>${br(a.data)}<br><small>${esc(diaSemana(a.data))}</small></td>
         <td>S${semanaDe(a.data)} · ${MESES_CURTOS[partes(a.data).mes - 1]}</td>
-        <td><strong>${esc(nomeAtividade(a))}</strong>${a.prioridade ? '<br>' + etqPrioridade(a, true) : ''}</td>
+        <td><strong>${esc(nomeAtividade(a))}</strong></td>
         <td>${esc(q.nome('locais', a.local_id))}</td>
         <td><span class="pc-cor" style="background:${esc(corCultura(a.cultura_id))}"></span>${esc(q.nome('culturas', a.cultura_id))}</td>
         <td>${esc(a.plantio || '')}</td>
@@ -447,7 +443,6 @@ function linhasPlanilha(lista) {
     'Horas previstas': a.horas_previstas ?? '',
     'Horas realizadas': a.horas_realizadas ?? '',
     'Status': statusDe(a),
-    'Prioridade': nomePrioridade(a.prioridade) || 'Normal',
     'Observações': a.observacoes || ''
   }));
 }
