@@ -1,0 +1,345 @@
+/* =====================================================================
+   Gestão Rápida · Programação Campo — relatório em PDF
+   Padrão SAKUMA: verde #84BD00, marrom #744F28, cinza #51534A, sem preto.
+   Logo SAKUMA no cabeçalho, como veio. LOP assina no pé da folha, à
+   direita: símbolo e depois a frase, em letra pequena e cinza.
+   ===================================================================== */
+
+const COR = {
+  verde: '#84BD00', verdeClaro: '#F1F7E6', verdeLinha: '#B9CC8E', verdeTotal: '#D9E8BD',
+  marrom: '#744F28', marromClaro: '#EFE6DB', cinza: '#51534A', cinzaClaro: '#8A8C83',
+  branco: '#FFFFFF', ok: '#4E8B1F', atr: '#C0392B', atrFundo: '#F8DAD6', pend: '#FFF1C9', canc: '#A5A79F'
+};
+const RESPONSAVEL = 'Guilherme Lopes — Gerente Administrativo';
+const FRASE_LOP = 'Inteligência para o agronegócio';
+
+/* ---------------------------------------------------------------- tela */
+
+const filtroRel = { tipo: 'semana', ano: null, mes: null, semana: null, de: '', ate: '',
+                    fazenda: '', local: '', cultura: '', operador: '', status: '' };
+
+function periodoRel(f) {
+  if (f.tipo === 'semana') {
+    return { de: inicioSemana(f.ano, f.mes, f.semana), ate: fimSemana(f.ano, f.mes, f.semana),
+             rotulo: rotuloSemana(f) + ` (${br(inicioSemana(f.ano, f.mes, f.semana))} a ${br(fimSemana(f.ano, f.mes, f.semana))})`,
+             arquivo: `S${f.semana}_${MESES[f.mes - 1]}_${f.ano}` };
+  }
+  if (f.tipo === 'mes') {
+    return { de: montaData(f.ano, f.mes, 1), ate: montaData(f.ano, f.mes, diasNoMes(f.ano, f.mes)),
+             rotulo: `${MESES[f.mes - 1]}/${f.ano}`, arquivo: `${MESES[f.mes - 1]}_${f.ano}` };
+  }
+  if (f.tipo === 'ano') {
+    return { de: montaData(f.ano, 1, 1), ate: montaData(f.ano, 12, 31), rotulo: `Ano ${f.ano}`, arquivo: `Ano_${f.ano}` };
+  }
+  return { de: f.de, ate: f.ate,
+           rotulo: `${f.de ? br(f.de) : 'início'} a ${f.ate ? br(f.ate) : 'hoje em diante'}`,
+           arquivo: `${f.de || 'inicio'}_a_${f.ate || 'fim'}` };
+}
+
+TELAS.relatorio = el => {
+  document.body.classList.remove('modo-quadro');
+  const f = filtroRel;
+  if (!f.ano) Object.assign(f, chaveSemana(hoje()));
+  const anos = new Set([f.ano, partes(hoje()).ano, partes(hoje()).ano + 1]);
+  atividadesVisiveis().forEach(a => anos.add(partes(a.data).ano));
+
+  el.innerHTML = `
+    <h1>Relatório das atividades</h1>
+    <p class="sub">Escolha o período e os filtros. O PDF sai com data, tarefa, local, cultura, operador e status.</p>
+    <div class="abas" id="rl-tipo">${[['semana', 'Semana'], ['mes', 'Mês'], ['ano', 'Ano'], ['datas', 'Datas']].map(([k, r]) =>
+      `<button type="button" data-t="${k}" class="${f.tipo === k ? 'ativo' : ''}">${r}</button>`).join('')}</div>
+    <div class="filtros pc-filtros">
+      ${f.tipo === 'datas' ? `
+        <label>De <input type="date" data-r="de" value="${esc(f.de)}"></label>
+        <label>Até <input type="date" data-r="ate" value="${esc(f.ate)}"></label>` : `
+        <select data-r="ano">${[...anos].sort().map(a => `<option${a === f.ano ? ' selected' : ''}>${a}</option>`).join('')}</select>
+        ${f.tipo !== 'ano' ? `<select data-r="mes">${MESES.map((m, i) => `<option value="${i + 1}"${i + 1 === f.mes ? ' selected' : ''}>${m}</option>`).join('')}</select>` : ''}
+        ${f.tipo === 'semana' ? `<select data-r="semana">${[1, 2, 3, 4].map(s => `<option value="${s}"${s === f.semana ? ' selected' : ''}>Semana ${s}</option>`).join('')}</select>` : ''}`}
+      <select data-r="fazenda">${opcoes(fazendasOrdenadas(), f.fazenda, 'Todas as fazendas')}</select>
+      <select data-r="local">${opcoesLocais(f.local, 'Todos os locais')}</select>
+      <select data-r="cultura">${opcoes(q.ordenado('culturas'), f.cultura, 'Todas as culturas')}</select>
+      <select data-r="operador">${opcoes(q.ordenado('operadores'), f.operador, 'Todos os operadores')}</select>
+      <select data-r="status">${opcoes([{ id: 'pendentes', nome: 'Pendentes' }, ...STATUS_TODOS], f.status, 'Todos os status')}</select>
+    </div>
+    <div class="acoes">
+      <button type="button" class="btn" id="rl-pdf">Gerar PDF</button>
+      <button type="button" class="btn secundario" id="rl-excel">Exportar Excel</button>
+    </div>
+    <div id="rl-previa"></div>`;
+
+  el.querySelectorAll('#rl-tipo button').forEach(b => b.onclick = () => { f.tipo = b.dataset.t; TELAS.relatorio(el); });
+  el.querySelectorAll('[data-r]').forEach(c => c.onchange = () => {
+    const k = c.dataset.r;
+    f[k] = ['ano', 'mes', 'semana'].includes(k) ? Number(c.value) : c.value;
+    previa();
+  });
+
+  const listaAtual = () => {
+    const p = periodoRel(f);
+    return { p, lista: filtrarAtividades({ de: p.de, ate: p.ate, fazenda: f.fazenda, local: f.local,
+      cultura: f.cultura, operador: f.operador, status: f.status }) };
+  };
+
+  function previa() {
+    const { p, lista } = listaAtual();
+    const ind = indicadores(lista);
+    el.querySelector('#rl-previa').innerHTML = `
+      <div class="painel pc-ind">
+        <div class="cartao"><b>${lista.length}</b><span>atividades</span></div>
+        <div class="cartao pc-c-ok"><b>${ind.concluido}</b><span>concluídas</span></div>
+        <div class="cartao"><b>${ind.andamento + ind.planejado}</b><span>a fazer</span></div>
+        <div class="cartao ${ind.atrasado ? 'alerta' : ''}"><b>${ind.atrasado}</b><span>atrasadas</span></div>
+        <div class="cartao"><b>${ind.pct}%</b><span>cumprimento</span></div>
+      </div>
+      <p class="sub">Período: <strong>${esc(p.rotulo)}</strong></p>
+      ${lista.length ? tabelaHtml(lista) : '<div class="vazio"><p>Nenhuma atividade nesse período.</p></div>'}`;
+  }
+  previa();
+
+  el.querySelector('#rl-excel').onclick = () => { const { p, lista } = listaAtual(); exportarExcel(lista, 'Programacao_' + p.arquivo); };
+  el.querySelector('#rl-pdf').onclick = () => {
+    const { p, lista } = listaAtual();
+    if (!lista.length) return aviso('Nenhuma atividade nesse período.', true);
+    gerarRelatorio({ titulo: 'Relatório de atividades de campo', periodo: p.rotulo,
+                     fazenda: f.fazenda, lista, arquivo: 'Atividades_' + p.arquivo });
+  };
+};
+
+/* a mesma tabela do PDF, na tela */
+function tabelaHtml(lista) {
+  let html = `<div class="rolagem"><table class="tabela pc-grade pc-rel"><thead><tr>
+    <th>Data</th><th>Sem.</th><th>Tarefa</th><th>Local</th><th>Cultura</th><th>Operador</th><th>Máquina / implemento</th><th>Status</th>
+    </tr></thead><tbody>`;
+  agruparPorFazenda(lista).forEach(([faz, itens]) => {
+    html += `<tr class="pc-grupo"><td colspan="8">${esc(faz)} · ${itens.length}</td></tr>`;
+    html += itens.map(a => `<tr class="${STATUS_CLASSE[statusDe(a)]}">
+      <td>${br(a.data)}</td><td>S${semanaDe(a.data)}</td><td>${esc(nomeAtividade(a))}</td>
+      <td>${esc(q.nome('locais', a.local_id))}</td><td>${esc(q.nome('culturas', a.cultura_id))}</td>
+      <td>${esc(q.nome('operadores', a.operador_id)) || '<span class="pc-falta">a definir</span>'}</td>
+      <td>${esc(maqImpl(a))}</td><td>${etqStatus(a)}</td></tr>`).join('');
+  });
+  return html + `</tbody><tfoot><tr class="pc-total"><td colspan="8">Total: ${lista.length} atividade${lista.length > 1 ? 's' : ''}</td></tr></tfoot></table></div>`;
+}
+
+function agruparPorFazenda(lista) {
+  const grupos = new Map();
+  fazendasOrdenadas(false).forEach(f => grupos.set(f.id, []));
+  lista.forEach(a => {
+    const fz = fazendaDoLocal(a.local_id) || '';
+    if (!grupos.has(fz)) grupos.set(fz, []);
+    grupos.get(fz).push(a);
+  });
+  return [...grupos.entries()].filter(([, v]) => v.length)
+    .map(([k, v]) => [q.nome('fazendas', k) || 'Sem fazenda', v.sort((a, b) => a.data.localeCompare(b.data))]);
+}
+
+/* ---------------------------------------------------------------- imagens */
+
+const imagensPdf = {};
+async function imagemPdf(caminho) {
+  if (imagensPdf[caminho]) return imagensPdf[caminho];
+  const blob = await (await fetch(caminho)).blob();
+  const url = await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); });
+  const dim = await new Promise(ok => { const i = new Image(); i.onload = () => ok({ w: i.naturalWidth, h: i.naturalHeight }); i.src = url; });
+  imagensPdf[caminho] = { url, ...dim, tipo: blob.type.includes('png') ? 'PNG' : 'JPEG' };
+  return imagensPdf[caminho];
+}
+
+/* ---------------------------------------------------------------- PDF */
+
+async function montarPdf(o) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  const L = doc.internal.pageSize.getWidth(), A = doc.internal.pageSize.getHeight();
+  const M = 12;
+  const emitido = new Date();
+  const emitidoTxt = emitido.toLocaleDateString('pt-BR') + ' ' + emitido.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const sakuma = await imagemPdf('img/sakuma-logo.png');
+  const lop = await imagemPdf('img/lop-marca.png');
+  doc.setFont('helvetica', 'normal');   // no PDF, a Helvetica é a Arial
+
+  /* ---- cabeçalho (só na primeira folha) */
+  const hLogo = 17, wLogo = hLogo * sakuma.w / sakuma.h;
+  doc.addImage(sakuma.url, sakuma.tipo, M, 9, wLogo, hLogo);
+  const xT = M + wLogo + 7;
+  doc.setTextColor(COR.marrom); doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
+  doc.text(o.titulo, xT, 15.5);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(COR.cinza);
+  doc.text('Gestão Rápida · Programação Campo', xT, 21);
+  doc.text(`Período: ${o.periodo}` + (o.fazenda ? `   ·   Fazenda: ${q.nome('fazendas', o.fazenda)}` : '   ·   Todas as fazendas'), xT, 26);
+  doc.setFontSize(8.5); doc.setTextColor(COR.cinzaClaro);
+  doc.text('Emitido em ' + emitidoTxt, L - M, 15.5, { align: 'right' });
+  doc.setDrawColor(COR.verde); doc.setLineWidth(0.9);
+  doc.line(M, 30, L - M, 30);
+
+  /* ---- indicadores */
+  let y = 35;
+  const ind = indicadores(o.lista);
+  const cards = [['Programadas', ind.total], ['Concluídas', ind.concluido], ['A fazer', ind.andamento + ind.planejado],
+                 ['Atrasadas', ind.atrasado], ['Canceladas', ind.cancelado], ['Cumprimento', ind.pct + '%']];
+  const wC = (L - 2 * M - 5 * 4) / 6;
+  cards.forEach(([rot, v], i) => {
+    const x = M + i * (wC + 4);
+    const alerta = rot === 'Atrasadas' && ind.atrasado > 0;
+    doc.setFillColor(alerta ? COR.atrFundo : COR.verdeClaro);
+    doc.setDrawColor(alerta ? COR.atr : COR.verdeLinha); doc.setLineWidth(0.3);
+    doc.roundedRect(x, y, wC, 15, 1.5, 1.5, 'FD');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+    doc.setTextColor(alerta ? COR.atr : (rot === 'Concluídas' ? COR.ok : COR.marrom));
+    doc.text(String(v), x + wC / 2, y + 8, { align: 'center' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(COR.cinza);
+    doc.text(rot, x + wC / 2, y + 12.5, { align: 'center' });
+  });
+  y += 21;
+
+  const secao = (txt) => {
+    if (y > A - 40) { doc.addPage(); y = 14; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5); doc.setTextColor(COR.marrom);
+    doc.text(txt, M, y);
+    doc.setDrawColor(COR.verde); doc.setLineWidth(0.4); doc.line(M, y + 1.5, L - M, y + 1.5);
+    y += 4;
+  };
+
+  const tabela = (lista) => {
+    const corpo = [];
+    agruparPorFazenda(lista).forEach(([faz, itens]) => {
+      corpo.push([{ content: `${faz}  ·  ${itens.length} atividade${itens.length > 1 ? 's' : ''}`, colSpan: 8,
+                    styles: { fillColor: COR.marromClaro, textColor: COR.marrom, fontStyle: 'bold' } }]);
+      itens.forEach(a => corpo.push([
+        br(a.data) + ' ' + diaSemana(a.data), 'S' + semanaDe(a.data), nomeAtividade(a),
+        q.nome('locais', a.local_id), q.nome('culturas', a.cultura_id),
+        q.nome('operadores', a.operador_id) || 'a definir', maqImpl(a), statusDe(a)
+      ]));
+    });
+    corpo.push([{ content: `Total: ${lista.length} atividade${lista.length === 1 ? '' : 's'}` +
+                  `   ·   ${ind2(lista).concluido} concluída(s)   ·   ${ind2(lista).pct}% de cumprimento`, colSpan: 8,
+                  styles: { fillColor: COR.verdeTotal, textColor: COR.marrom, fontStyle: 'bold' } }]);
+    doc.autoTable({
+      startY: y, margin: { left: M, right: M, bottom: 18, top: 14 },
+      head: [['Data', 'Sem.', 'Tarefa', 'Local', 'Cultura', 'Operador', 'Máquina / implemento', 'Status']],
+      body: corpo,
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 8.5, textColor: COR.cinza, lineColor: COR.verdeLinha,
+                lineWidth: 0.2, cellPadding: 1.6, fillColor: COR.verdeClaro, valign: 'middle' },
+      headStyles: { fillColor: COR.verde, textColor: COR.branco, fontStyle: 'bold', lineColor: COR.verde },
+      columnStyles: { 0: { cellWidth: 24 }, 1: { cellWidth: 11, halign: 'center' }, 2: { cellWidth: 46 },
+                      3: { cellWidth: 44 }, 4: { cellWidth: 30 }, 5: { cellWidth: 36 },
+                      6: { cellWidth: 52 }, 7: { cellWidth: 30, halign: 'center' } },
+      didParseCell: d => {
+        if (d.section !== 'body' || d.cell.raw == null || typeof d.cell.raw === 'object') return;
+        if (d.column.index === 5 && d.cell.raw === 'a definir') { d.cell.styles.textColor = COR.cinzaClaro; return; }
+        if (d.column.index !== 7) return;
+        const s = d.cell.raw;
+        d.cell.styles.fontStyle = 'bold';
+        if (s === 'Concluído') d.cell.styles.textColor = COR.ok;
+        else if (s === 'Atrasado') { d.cell.styles.fillColor = COR.atrFundo; d.cell.styles.textColor = COR.atr; }
+        else if (s === 'Cancelado') { d.cell.styles.textColor = COR.canc; d.cell.styles.fontStyle = 'normal'; }
+        else { d.cell.styles.fillColor = COR.pend; d.cell.styles.textColor = COR.marrom; }
+      },
+    });
+    y = doc.lastAutoTable.finalY + 7;
+  };
+  const ind2 = l => indicadores(l);
+
+  secao(o.blocos ? 'Atividades da semana' : 'Atividades');
+  tabela(o.lista);
+
+  (o.blocos || []).forEach(b => {
+    secao(b.titulo);
+    if (b.lista.length) tabela(b.lista);
+    else { doc.setFontSize(9); doc.setTextColor(COR.cinzaClaro); doc.text('Nada programado.', M, y + 3); y += 10; }
+  });
+
+  if (o.reuniao) {
+    secao('Anotações da reunião');
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(COR.cinza);
+    const cab = [`Data da reunião: ${o.reuniao.data_reuniao ? br(o.reuniao.data_reuniao) : '—'}`,
+                 `Participantes: ${o.reuniao.participantes || '—'}`];
+    const texto = doc.splitTextToSize(o.reuniao.anotacoes || 'Sem anotações.', L - 2 * M - 6);
+    const alt = 6 + cab.length * 5 + texto.length * 4.6;
+    if (y + alt > A - 20) { doc.addPage(); y = 14; }
+    doc.setFillColor(COR.verdeClaro); doc.setDrawColor(COR.verdeLinha); doc.setLineWidth(0.3);
+    doc.rect(M, y, L - 2 * M, alt, 'FD');
+    let yy = y + 6;
+    doc.setFont('helvetica', 'bold'); cab.forEach(t => { doc.text(t, M + 3, yy); yy += 5; });
+    doc.setFont('helvetica', 'normal'); doc.text(texto, M + 3, yy);
+    y += alt + 5;
+  }
+
+  /* ---- responsável */
+  if (y > A - 24) { doc.addPage(); y = 20; }
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(COR.cinza);
+  doc.text('Responsável pela emissão', M, y + 2);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(COR.marrom);
+  doc.text(RESPONSAVEL, M, y + 7);
+
+  /* ---- pé de todas as folhas */
+  const total = doc.getNumberOfPages();
+  const hLop = 7.5, wLop = hLop * lop.w / lop.h;
+  for (let p = 1; p <= total; p++) {
+    doc.setPage(p);
+    const yLinha = A - 13;
+    doc.setDrawColor(COR.verde); doc.setLineWidth(0.4); doc.line(M, yLinha, L - M, yLinha);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(COR.cinzaClaro);
+    doc.text(`SAKUMA Agronegócios · ${o.titulo} · emitido em ${emitidoTxt}`, M, A - 6.5);
+    doc.text(`Página ${p} de ${total}`, L / 2, A - 6.5, { align: 'center' });
+    // LOP: símbolo e depois a frase, terminando na margem direita.
+    // A frase fica na altura do meio das letras "LOP", que ocupam a parte de
+    // baixo do desenho (de 52% a 93% da altura da imagem).
+    doc.setFontSize(7);
+    const wFrase = doc.getTextWidth(FRASE_LOP);
+    const xFrase = L - M - wFrase;
+    const xLop = xFrase - 1.6 - wLop;
+    const yImg = A - 11.2;
+    doc.addImage(lop.url, lop.tipo, xLop, yImg, wLop, hLop);
+    const meioLetras = yImg + hLop * 0.725;
+    doc.text(FRASE_LOP, xFrase, meioLetras + 0.85);
+  }
+  return doc;
+}
+
+/* ---------------------------------------------------------------- entrega */
+
+async function gerarRelatorio(o) {
+  if (!window.jspdf || !window.jspdf.jsPDF) return aviso('O gerador de PDF não carregou. Abra o app com internet uma vez.', true);
+  aviso('Montando o PDF…');
+  let doc;
+  try { doc = await montarPdf(o); }
+  catch (e) { console.error(e); return aviso('Não consegui montar o PDF: ' + e.message, true); }
+  const nome = (o.arquivo || 'Relatorio') .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w.-]+/g, '_') + '.pdf';
+  const blob = doc.output('blob');
+  const url = URL.createObjectURL(blob);
+  const ind = indicadores(o.lista);
+  const resumo = `*${o.titulo}* — SAKUMA\n${o.periodo}` +
+    (o.fazenda ? `\nFazenda: ${q.nome('fazendas', o.fazenda)}` : '') +
+    `\n${ind.total} programada(s) · ${ind.concluido} concluída(s) · ${ind.atrasado} atrasada(s) · ${ind.pct}% de cumprimento`;
+
+  abrirModal('Relatório pronto', `
+    <p class="sub"><strong>${esc(nome)}</strong><br>${esc(o.periodo)} · ${o.lista.length} atividade(s)</p>
+    <iframe class="pc-pdf" src="${url}" title="Prévia do relatório"></iframe>
+    <div class="acoes">
+      <a class="btn" href="${url}" download="${esc(nome)}" id="rl-baixar">Baixar PDF</a>
+      <button type="button" class="btn secundario" id="rl-zap">Enviar pelo WhatsApp</button>
+      <button type="button" class="btn secundario" id="rl-imp">Imprimir</button>
+    </div>`, corpo => {
+    corpo.querySelector('#rl-imp').onclick = () => {
+      const fr = corpo.querySelector('.pc-pdf');
+      try { fr.contentWindow.focus(); fr.contentWindow.print(); }
+      catch (e) { window.open(url, '_blank'); }
+    };
+    corpo.querySelector('#rl-zap').onclick = async () => {
+      const arq = new File([blob], nome, { type: 'application/pdf' });
+      // no celular: compartilha o arquivo direto (escolhe o WhatsApp na lista)
+      if (navigator.canShare && navigator.canShare({ files: [arq] })) {
+        try { await navigator.share({ files: [arq], title: o.titulo, text: resumo.replace(/\*/g, '') }); return; }
+        catch (e) { if (e.name === 'AbortError') return; }
+      }
+      // no computador: baixa o PDF e abre o WhatsApp com o resumo para anexar
+      corpo.querySelector('#rl-baixar').click();
+      window.open('https://wa.me/?text=' + encodeURIComponent(resumo + '\n\n(PDF anexo)'), '_blank');
+      aviso('PDF baixado. Anexe o arquivo na conversa do WhatsApp.');
+    };
+  });
+}
+
+Object.assign(window, { gerarRelatorio, montarPdf, tabelaHtml });
