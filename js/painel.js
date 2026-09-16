@@ -146,12 +146,12 @@ TELAS.painel = el => {
       locais.forEach(l => {
         html += `<tr><th class="pc-loc">${esc(l.nome)}</th>`;
         cols.forEach(c => [1, 2, 3, 4].forEach(s => {
-          const lista = (cel[l.id + '|' + chaveCol(c) + '|' + s] || []).sort((a, b) => a.data.localeCompare(b.data));
+          const lista = (cel[l.id + '|' + chaveCol(c) + '|' + s] || []).sort((a, b) => pesoPrioridade(a) - pesoPrioridade(b) || a.data.localeCompare(b.data));
           html += `<td class="pc-cel${colAgora === chaveCol(c) + '|' + s ? ' agora' : ''}${s === 1 ? ' ini' : ''}${s === 1 && c.mes === 1 && viraAno ? ' pc-vira' : ''}"
             data-local="${l.id}" data-ano="${c.ano}" data-mes="${c.mes}" data-sem="${s}">${lista.map(a => `
-            <div class="pc-etq ${STATUS_CLASSE[statusDe(a)]}" draggable="true" data-id="${a.id}"
+            <div class="pc-etq ${STATUS_CLASSE[statusDe(a)]}${a.prioridade ? ' pri-' + a.prioridade : ''}" draggable="true" data-id="${a.id}"
               style="--cor:${esc(corCultura(a.cultura_id))}"
-              title="${esc(br(a.data) + ' · ' + nomeAtividade(a) + ' – ' + q.nome('culturas', a.cultura_id) + (a.plantio ? ' · Plantio ' + a.plantio : '') + ' · ' + statusDe(a) + (a.operador_id ? ' · ' + q.nome('operadores', a.operador_id) : ''))}">
+              title="${esc(br(a.data) + ' · ' + nomeAtividade(a) + ' – ' + q.nome('culturas', a.cultura_id) + (a.plantio ? ' · Plantio ' + a.plantio : '') + (a.prioridade ? ' · ' + nomePrioridade(a.prioridade) : '') + ' · ' + statusDe(a) + (a.operador_id ? ' · ' + q.nome('operadores', a.operador_id) : ''))}">
               <b>${partes(a.data).dia}</b> ${esc(nomeAtividade(a))} – ${esc(q.nome('culturas', a.cultura_id))}${a.plantio ? ` <i class="pc-pl">${esc(a.plantio)}</i>` : ''}</div>`).join('')}</td>`;
         }));
         html += '</tr>';

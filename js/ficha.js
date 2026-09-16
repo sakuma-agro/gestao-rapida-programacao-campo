@@ -80,7 +80,7 @@ async function montarFicha(o) {
     y += 20;
 
     /* ---- tabela separada por dia */
-    const ordenada = lista.slice().sort((a, b) => a.data.localeCompare(b.data) ||
+    const ordenada = lista.slice().sort((a, b) => a.data.localeCompare(b.data) || pesoPrioridade(a) - pesoPrioridade(b) ||
       q.nome('locais', a.local_id).localeCompare(q.nome('locais', b.local_id), 'pt-BR'));
     const corpo = [];
     let diaAtual = '';
@@ -91,9 +91,10 @@ async function montarFicha(o) {
           styles: { fillColor: COR.marrom, textColor: '#FFFFFF', fontStyle: 'bold', fontSize: 11.5, cellPadding: { top: 2.2, bottom: 2.2, left: 3 } } }]);
       }
       const st = statusDe(a);
-      corpo.push({ _feito: st === 'Concluído', linha: ['', '',
+      corpo.push({ _feito: st === 'Concluído', _pri: a.prioridade, linha: ['', '',
         q.nome('locais', a.local_id) + (a.plantio ? '\nPlantio: ' + a.plantio : ''),
-        nomeAtividade(a) + '\n' + q.nome('culturas', a.cultura_id) + (maqImpl(a) ? ' · ' + maqImpl(a) : ''),
+        nomeAtividade(a) + (a.prioridade ? '  (' + nomePrioridade(a.prioridade).toUpperCase() + ')' : '') +
+          '\n' + q.nome('culturas', a.cultura_id) + (maqImpl(a) ? ' · ' + maqImpl(a) : ''),
         q.nome('operadores', a.operador_id) || '', ''] });
     });
 
@@ -119,6 +120,12 @@ async function montarFicha(o) {
       didParseCell: d => {
         if (d.section !== 'body' || Array.isArray(corpo[d.row.index])) return;
         if ((d.column.index === iOper && !d.cell.raw) || d.column.index === iAnot) d.cell.styles.fillColor = '#FFFFFF';
+        const pr = corpo[d.row.index]._pri;
+        if (pr && d.column.index === 3) {
+          d.cell.styles.fillColor = pr === 'urgente' ? '#F8D3CE' : '#FFF0B3';
+          d.cell.styles.textColor = pr === 'urgente' ? COR.atr : COR.marrom;
+          d.cell.styles.fontStyle = 'bold';
+        }
       },
       didDrawCell: d => {
         if (d.section !== 'body') return;

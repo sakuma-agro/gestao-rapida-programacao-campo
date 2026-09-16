@@ -93,6 +93,18 @@ function etqStatus(a) {
 }
 const pendente = s => s === 'Planejado' || s === 'Em andamento' || s === 'Atrasado';
 
+/* Prioridade: urgente e importante (vermelho) · importante, não urgente (amarelo) */
+const PRIORIDADES = [
+  { id: 'urgente', nome: 'Urgente e importante', curto: 'Urgente' },
+  { id: 'importante', nome: 'Importante, não urgente', curto: 'Importante' }
+];
+const nomePrioridade = p => (PRIORIDADES.find(x => x.id === p) || {}).nome || '';
+function etqPrioridade(a, curto = false) {
+  const p = PRIORIDADES.find(x => x.id === (typeof a === 'string' ? a : a && a.prioridade));
+  return p ? `<span class="etq-pri pri-${p.id}" title="${esc(p.nome)}">${esc(curto ? p.curto : p.nome)}</span>` : '';
+}
+const pesoPrioridade = a => a.prioridade === 'urgente' ? 0 : a.prioridade === 'importante' ? 1 : 2;
+
 /* ---------------------------------------------------------------- atividades */
 
 function atividadesVisiveis() {
@@ -192,6 +204,7 @@ Object.assign(window, {
   MESES, MESES_CURTOS, hoje, partes, montaData, diasNoMes, somaDias, difDias, br, diaSemana,
   semanaDe, chaveSemana, inicioSemana, fimSemana, semanaVizinha, rotuloSemana, mesmaSemana,
   STATUS, STATUS_TODOS, STATUS_CLASSE, statusDe, etqStatus, pendente,
+  PRIORIDADES, nomePrioridade, etqPrioridade, pesoPrioridade,
   atividadesVisiveis, nomeAtividade, fazendaDoLocal, corCultura, locaisOrdenados, fazendasOrdenadas,
   maqImpl, gravarAtividade, campoTexto, campoArea, opcoes, campoLista, opcoesLocais, lerForm, num, fmtNum
 });
