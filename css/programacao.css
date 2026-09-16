@@ -206,3 +206,16 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 .pc-fora{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
 .pc-chip-ano{border:1px solid var(--marrom);background:var(--marrom-claro);color:var(--marrom);border-radius:999px;padding:5px 12px;font:inherit;font-size:13px;font-weight:bold;cursor:pointer}
 .pc-quadro .pc-vira{border-left:4px solid var(--marrom)}
+
+/* ---------- prioridade ---------- */
+.etq-pri{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:bold;white-space:nowrap;vertical-align:middle}
+.etq-pri.pri-urgente{background:#D93A2B;color:#fff}
+.etq-pri.pri-importante{background:#F5C400;color:var(--marrom)}
+.pc-etq.pri-urgente{box-shadow:inset 0 0 0 2px #D93A2B}
+.pc-etq.pri-importante{box-shadow:inset 0 0 0 2px #E0B000}
+.pc-etq.pri-urgente::before,.pc-etq.pri-importante::before{content:'!';display:inline-block;width:1.3em;height:1.3em;line-height:1.3em;text-align:center;border-radius:50%;margin-right:4px;font-weight:bold;font-size:.9em}
+.pc-etq.pri-urgente::before{background:#D93A2B;color:#fff}
+.pc-etq.pri-importante::before{background:#F5C400;color:var(--marrom)}
+.pc-rlista li.pri-urgente{border-left-color:#D93A2B;background:#FDF0EE}
+.pc-rlista li.pri-importante{border-left-color:#F5C400;background:#FFFBEA}
+.pc-rlista li.pri-urgente.st-ok,.pc-rlista li.pri-importante.st-ok{background:var(--verde-claro)}
