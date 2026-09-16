@@ -68,6 +68,7 @@ TELAS.relatorio = el => {
     <div class="acoes">
       <button type="button" class="btn" id="rl-pdf">Gerar PDF</button>
       <button type="button" class="btn secundario" id="rl-ficha">Ficha de conferência (imprimir)</button>
+      <button type="button" class="btn secundario" id="rl-ficha-op">Ficha por operador (imprimir)</button>
       <button type="button" class="btn secundario" id="rl-excel">Exportar Excel</button>
     </div>
     <div id="rl-previa"></div>`;
@@ -101,14 +102,16 @@ TELAS.relatorio = el => {
   }
   previa();
 
-  el.querySelector('#rl-ficha').onclick = () => {
+  const ficha = modo => {
     const { p, lista } = listaAtual();
     const itens = lista.filter(a => statusDe(a) !== 'Cancelado');
     if (!itens.length) return aviso('Nenhuma atividade nesse período.', true);
     gerarRelatorio({ tipo: 'ficha', titulo: 'Ficha de conferência das atividades', periodo: p.rotulo,
-                     fazenda: f.fazenda, lista: itens, agrupar: f.agrupar,
-                     arquivo: (f.agrupar === 'operador' ? 'Ficha_por_operador_' : 'Ficha_') + p.arquivo });
+                     fazenda: f.fazenda, lista: itens, agrupar: modo,
+                     arquivo: (modo === 'operador' ? 'Ficha_por_operador_' : 'Ficha_') + p.arquivo });
   };
+  el.querySelector('#rl-ficha').onclick = () => ficha(f.agrupar);
+  el.querySelector('#rl-ficha-op').onclick = () => ficha('operador');
   el.querySelector('#rl-excel').onclick = () => { const { p, lista } = listaAtual(); exportarExcel(lista, 'Programacao_' + p.arquivo); };
   el.querySelector('#rl-pdf').onclick = () => {
     const { p, lista } = listaAtual();

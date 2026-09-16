@@ -19,7 +19,7 @@ function formAtividade(alvo, base = {}, aoSalvar) {
       ${campoLista('Cultura *', 'cultura_id', q.ordenado('culturas'), a.cultura_id)}
       ${campoTexto('Plantio', 'plantio', a.plantio || '', 'text', 'Opcional. Ex.: PL 21')}
       ${campoLista('Atividade *', 'tipo_id', q.ordenado('tipos_atividade'), a.tipo_id)}
-      ${campoLista('Operador *', 'operador_id', q.ordenado('operadores'), a.operador_id)}
+      ${campoLista('Operador', 'operador_id', q.ordenado('operadores'), a.operador_id, '— a definir —')}
       ${campoLista('Status *', 'status', STATUS, a.status, null)}
       ${campoLista('Máquina', 'maquina_id', q.ordenado('maquinas'), a.maquina_id, '— nenhuma —')}
       ${campoLista('Implemento', 'implemento_id', q.ordenado('implementos'), a.implemento_id, '— nenhum —')}
@@ -87,7 +87,7 @@ function formAtividade(alvo, base = {}, aoSalvar) {
   const salvar = async (continuar) => {
     const f = lerForm(alvo);
     for (const [c, rot] of [['data', 'a data'], ['local_id', 'o local'], ['cultura_id', 'a cultura'],
-                            ['tipo_id', 'a atividade'], ['operador_id', 'o operador']]) {
+                            ['tipo_id', 'a atividade']]) {
       if (!f[c]) return aviso('Falta informar ' + rot + '.', true);
     }
     const reg = Object.assign({}, a, {

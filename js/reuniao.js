@@ -120,6 +120,7 @@ TELAS.reuniao = el => {
         <button type="button" class="btn" id="rn-salvar">Salvar anotações</button>
         <button type="button" class="btn secundario" id="rn-pdf">Relatório da reunião (PDF)</button>
         <button type="button" class="btn secundario" id="rn-ficha">Ficha de conferência (imprimir)</button>
+        <button type="button" class="btn secundario" id="rn-ficha-op">Ficha por operador (imprimir)</button>
         <button type="button" class="btn secundario" id="rn-lancar">Lançar atividade</button>
       </div>
     </section>`;
@@ -165,12 +166,15 @@ TELAS.reuniao = el => {
   };
   const rotuloPdf = `${P.titulo} (${P.faixa})`;
   el.querySelector('#rn-salvar').onclick = async () => { await salvarNotas(); aviso('Anotações salvas.'); };
-  el.querySelector('#rn-ficha').onclick = () => {
+  const ficha = modo => {
     const itens = atual.filter(a => statusDe(a) !== 'Cancelado');
     if (!itens.length) return aviso('Nada programado nesse período.', true);
-    gerarRelatorio({ tipo: 'ficha', titulo: 'Ficha de conferência das atividades',
-      periodo: rotuloPdf, fazenda: E.fazenda, lista: itens, arquivo: 'Ficha_' + P.arquivo });
+    gerarRelatorio({ tipo: 'ficha', titulo: 'Ficha de conferência das atividades', agrupar: modo,
+      periodo: rotuloPdf, fazenda: E.fazenda, lista: itens,
+      arquivo: (modo === 'operador' ? 'Ficha_por_operador_' : 'Ficha_') + P.arquivo });
   };
+  el.querySelector('#rn-ficha').onclick = () => ficha('');
+  el.querySelector('#rn-ficha-op').onclick = () => ficha('operador');
   el.querySelector('#rn-pdf').onclick = async () => {
     const r = await salvarNotas();
     gerarRelatorio({

@@ -37,7 +37,7 @@ async function montarFicha(o) {
   const porOperador = o.agrupar === 'operador';
   const grupos = porOperador ? agrupar(o.lista, 'operador') : [[null, o.lista]];
 
-  grupos.forEach(([nomeGrupo, lista], gi) => {
+  grupos.forEach(([nomeGrupo, lista, chaveGrupo], gi) => {
     if (gi > 0) doc.addPage();
 
     /* ---- cabeçalho */
@@ -55,7 +55,15 @@ async function montarFicha(o) {
     if (porOperador) {
       doc.setFillColor(COR.marrom); doc.roundedRect(M, y, L - 2 * M, 11, 1.5, 1.5, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor('#FFFFFF');
-      doc.text('Operador: ' + nomeGrupo, M + 4, y + 7.3);
+      if (chaveGrupo) doc.text('Operador: ' + nomeGrupo, M + 4, y + 7.3);
+      else {
+        // atividades sem operador: linha para escrever o nome à mão
+        doc.text('Operador:', M + 4, y + 7.3);
+        doc.setDrawColor('#FFFFFF'); doc.setLineWidth(0.4);
+        doc.line(M + 30, y + 8, L - M - 60, y + 8);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+        doc.text('(ainda sem operador definido)', L - M - 4, y + 7.3, { align: 'right' });
+      }
       y += 15;
     }
 
