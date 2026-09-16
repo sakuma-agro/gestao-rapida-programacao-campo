@@ -197,3 +197,6 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 .pc-senha-valor{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap}
 .pc-senha-valor code{font-size:20px;letter-spacing:.06em;background:var(--branco);padding:6px 12px;border-radius:6px;border:1px dashed var(--verde)}
 .campo label.pc-cx{display:inline-flex;margin:0 14px 0 0}
+.pc-periodo{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:-4px 0 14px}
+.pc-periodo label{display:flex;flex-direction:column;font-size:13px;color:var(--cinza-claro);gap:3px}
+.pc-periodo input{padding:10px;border:1px solid var(--linha);border-radius:var(--raio);font:inherit;background:var(--branco);color:var(--cinza)}
