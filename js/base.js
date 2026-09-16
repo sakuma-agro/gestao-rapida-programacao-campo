@@ -431,7 +431,7 @@ function telaLogin(mensagem) {
   document.body.classList.remove('sem-rodape');
   $('#tela').innerHTML = `
     <section class="login">
-      <img class="lg-icone" src="icons/gr-192.v1.png" alt="">
+      <img class="lg-icone" src="icons/gr-pc-192.v1.png" alt="">
       <h1>Gestão Rápida <span>Programação Campo</span></h1>
       <p class="sub">Entre com o usuário que a administração cadastrou para você.</p>
       ${mensagem ? `<p class="sub" style="color:var(--urgente)">${esc(mensagem)}</p>` : ''}
@@ -580,7 +580,7 @@ async function iniciarSessao() {
     (u2.admin || u2.perfil === 'ADMINISTRADOR' || (u2.modulos || []).includes('programacao'));
   if (!liberado) {
     $('#tela').innerHTML = `<section class="login">
-      <img class="lg-icone" src="icons/gr-192.v1.png" alt="">
+      <img class="lg-icone" src="icons/gr-pc-192.v1.png" alt="">
       <h1>Gestão Rápida <span>Programação Campo</span></h1>
       <p class="sub">Seu usuário ainda não tem acesso à Programação Campo.
         Peça a um administrador para liberar em Configurações.</p></section>`;
