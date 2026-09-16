@@ -1,0 +1,70 @@
+{
+  "name": "Gestão Rápida (Programação Campo) · SAKUMA Agronegócios",
+  "short_name": "Programação Campo",
+  "description": "Programação anual das atividades de campo da SAKUMA Agronegócios: painel por mês e semana, reunião semanal e relatório em PDF. Funciona sem internet.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "id": "/gestao-rapida-programacao-campo/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#FFFFFF",
+  "theme_color": "#84BD00",
+  "categories": [
+    "productivity",
+    "business",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "icons/gr-192.v1.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/gr-512.v1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/gr-maskable-192.v1.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/gr-maskable-512.v1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Lançar atividade",
+      "short_name": "Lançar",
+      "description": "Registrar uma atividade de campo",
+      "url": "./?acao=lancar"
+    },
+    {
+      "name": "Painel anual",
+      "short_name": "Painel",
+      "description": "Quadro do ano por mês e semana",
+      "url": "./?acao=painel"
+    },
+    {
+      "name": "Reunião semanal",
+      "short_name": "Reunião",
+      "description": "Conferir a semana com a equipe",
+      "url": "./?acao=reuniao"
+    }
+  ]
+}

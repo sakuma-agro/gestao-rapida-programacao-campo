@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gestão Rápida (Programação Campo) · SAKUMA</title>
+<meta name="description" content="Programação anual das atividades de campo da SAKUMA Agronegócios: painel por mês e semana, reunião semanal e relatório em PDF.">
+<meta name="theme-color" content="#84BD00">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon-gr.v1.ico" sizes="any">
+<link rel="icon" type="image/png" href="icons/gr-192.v1.png">
+<link rel="apple-touch-icon" href="icons/gr-180.v1.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Programação Campo">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/programacao.css">
+</head>
+<body>
+
+<!-- TOPO — mesmo padrão dos outros Gestão Rápida: SAKUMA no alto,
+     LOP gravada a laser só no rodapé. As duas marcas nunca no mesmo lugar. -->
+<header class="topo">
+  <div class="topo-int">
+    <button type="button" class="topo-inicio" id="btn-inicio" title="Voltar ao início">
+      <img src="icons/gr-192.v1.png" alt="">
+      <h1>Gestão Rápida <span class="modulo">Programação Campo</span></h1>
+    </button>
+    <span class="topo-divisor"></span>
+    <img class="topo-marca" src="img/sakuma-logo.png" alt="SAKUMA Agronegócios">
+    <span class="cresce"></span>
+    <span id="lbl-local" class="local"></span>
+    <div class="estado" id="estado-conexao">
+      <span class="ponto" id="ponto-conexao"></span>
+      <span id="txt-conexao">verificando…</span>
+      <button type="button" id="btn-fila" class="fila oculto">0 aguardando envio</button>
+    </div>
+    <button type="button" id="btn-instalar" class="btn-fantasma oculto">Instalar o app</button>
+    <button type="button" id="btn-sair" class="btn-fantasma oculto">Sair</button>
+  </div>
+  <nav class="menu" id="menu" hidden></nav>
+  <nav class="menu2" id="menu2" hidden></nav>
+</header>
+
+<main id="tela" class="conteudo">
+  <section class="carregando"><p>Abrindo a base local…</p></section>
+</main>
+
+<footer class="rodape">
+  <img class="rodape-lop" src="img/lop-assinatura-laser-escuro.png"
+       alt="Desenvolvido por LOP — Inteligência para o agronegócio">
+</footer>
+
+<div id="modal" class="modal oculto" role="dialog" aria-modal="true">
+  <div class="caixa">
+    <header><h2 id="modal-titulo"></h2>
+      <button type="button" id="modal-fechar" aria-label="Fechar">×</button>
+    </header>
+    <div id="modal-corpo"></div>
+  </div>
+</div>
+
+<div id="aviso" class="aviso oculto" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/base.js"></script>
+<script src="js/comum.js"></script>
+<script src="js/acesso.js"></script>
+<script src="js/painel.js"></script>
+<script src="js/atividades.js"></script>
+<script src="js/reuniao.js"></script>
+<script src="js/relatorio.js"></script>
+<script src="js/cadastros.js"></script>
+</body>
+</html>
