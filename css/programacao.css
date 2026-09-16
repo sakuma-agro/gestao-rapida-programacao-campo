@@ -200,3 +200,9 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 .pc-periodo{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:-4px 0 14px}
 .pc-periodo label{display:flex;flex-direction:column;font-size:13px;color:var(--cinza-claro);gap:3px}
 .pc-periodo input{padding:10px;border:1px solid var(--linha);border-radius:var(--raio);font:inherit;background:var(--branco);color:var(--cinza)}
+.pc-pl{font-style:normal;font-weight:bold;color:var(--marrom);white-space:nowrap}
+.pc-anos{display:inline-flex;align-items:center;gap:4px}
+.pc-anos .btn{min-height:44px;padding:6px 12px}
+.pc-fora{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+.pc-chip-ano{border:1px solid var(--marrom);background:var(--marrom-claro);color:var(--marrom);border-radius:999px;padding:5px 12px;font:inherit;font-size:13px;font-weight:bold;cursor:pointer}
+.pc-quadro .pc-vira{border-left:4px solid var(--marrom)}
