@@ -93,8 +93,8 @@ TELAS.painel = el => {
     });
 
     const colAgora = agora.ano === f.ano ? agora.mes + '|' + agora.semana : '';
-    // no ano inteiro, os locais aparecem de novo entre junho e julho, como no quadro da parede
-    const meio = meses.includes(6) && meses.includes(7) ? 6 : 0;
+    // a coluna Local fica congelada à esquerda, então não se repete no meio do ano
+    const meio = 0;
     let html = `<table class="pc-quadro"><thead><tr><th class="pc-loc" rowspan="2">Local</th>
       ${meses.map(m => `<th colspan="4" class="pc-mes${m === agora.mes && agora.ano === f.ano ? ' agora' : ''}">${MESES[m - 1]}</th>` +
         (m === meio ? '<th class="pc-loc2" rowspan="2">Local</th>' : '')).join('')}</tr>
