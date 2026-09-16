@@ -188,3 +188,12 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 .pc-rolagem:fullscreen{max-height:none;height:100vh;background:var(--branco);border:0;border-radius:0}
 @media (max-width:640px){ .pc-zoom{width:100%;justify-content:space-between} }
 .pc-quadro tr.pc-faz th.pc-loc,.pc-quadro tr.pc-faz th.pc-loc2{font-size:calc(12px * var(--z))}
+
+/* ---------- pessoas ---------- */
+.pc-nome{border:0;background:none;padding:0;font:inherit;font-weight:bold;color:var(--marrom);cursor:pointer;text-align:left;text-decoration:underline;text-underline-offset:3px}
+.pc-senha{margin:10px 0;padding:12px;border-radius:var(--raio);background:var(--verde-claro);border:1px solid var(--verde-linha)}
+.pc-senha:empty{display:none}
+.pc-senha.erro{background:var(--atr-fundo);border-color:#E9A79F}
+.pc-senha-valor{display:flex;align-items:center;gap:10px;margin:8px 0;flex-wrap:wrap}
+.pc-senha-valor code{font-size:20px;letter-spacing:.06em;background:var(--branco);padding:6px 12px;border-radius:6px;border:1px dashed var(--verde)}
+.campo label.pc-cx{display:inline-flex;margin:0 14px 0 0}
