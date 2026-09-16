@@ -17,6 +17,7 @@ function formAtividade(alvo, base = {}, aoSalvar) {
       <div class="campo"><label for="f-local_id">Local *</label>
         <select id="f-local_id" name="local_id">${opcoesLocais(a.local_id)}</select></div>
       ${campoLista('Cultura *', 'cultura_id', q.ordenado('culturas'), a.cultura_id)}
+      ${campoTexto('Plantio', 'plantio', a.plantio || '', 'text', 'Opcional. Ex.: PL 21')}
       ${campoLista('Atividade *', 'tipo_id', q.ordenado('tipos_atividade'), a.tipo_id)}
       ${campoLista('Operador *', 'operador_id', q.ordenado('operadores'), a.operador_id)}
       ${campoLista('Status *', 'status', STATUS, a.status, null)}
@@ -91,7 +92,7 @@ function formAtividade(alvo, base = {}, aoSalvar) {
     }
     const reg = Object.assign({}, a, {
       data: f.data, local_id: f.local_id, cultura_id: f.cultura_id, tipo_id: f.tipo_id,
-      operador_id: f.operador_id, status: f.status || 'Planejado',
+      operador_id: f.operador_id, status: f.status || 'Planejado', plantio: f.plantio,
       maquina_id: f.maquina_id, implemento_id: f.implemento_id,
       horas_previstas: num(f.horas_previstas), horas_realizadas: num(f.horas_realizadas),
       observacoes: f.observacoes, ativo: true
@@ -121,7 +122,7 @@ function formAtividade(alvo, base = {}, aoSalvar) {
     aviso(salvos.length > 1 ? `${salvos.length} atividades salvas.`
       : `Salvo em ${rotuloSemana(chaveSemana(salvos[0].data))}.`);
     if (continuar) {
-      formAtividade(alvo, { data: reg.data, local_id: reg.local_id, cultura_id: reg.cultura_id,
+      formAtividade(alvo, { data: reg.data, local_id: reg.local_id, cultura_id: reg.cultura_id, plantio: reg.plantio,
                             operador_id: reg.operador_id, maquina_id: reg.maquina_id }, aoSalvar);
     } else if (aoSalvar) aoSalvar(salvos);
   };
@@ -273,7 +274,7 @@ function filtrarAtividades(f) {
     if (f.operador && a.operador_id !== f.operador) return false;
     if (f.status === 'pendentes' ? !pendente(statusDe(a)) : (f.status && statusDe(a) !== f.status)) return false;
     if (t) {
-      const txt = [nomeAtividade(a), q.nome('locais', a.local_id), q.nome('culturas', a.cultura_id),
+      const txt = [nomeAtividade(a), q.nome('locais', a.local_id), q.nome('culturas', a.cultura_id), a.plantio,
         q.nome('operadores', a.operador_id), maqImpl(a), a.observacoes].join(' ').toLowerCase();
       if (!txt.includes(t)) return false;
     }
@@ -347,7 +348,7 @@ TELAS.atividades = el => {
     const horas = lista.reduce((s, a) => s + (Number(a.horas_previstas) || 0), 0);
     alvo.innerHTML = `<div class="rolagem"><table class="tabela pc-grade">
       <thead><tr><th class="ce"><input type="checkbox" id="at-todas" aria-label="Marcar todas"></th>
-        <th>Data</th><th>Semana</th><th>Atividade</th><th>Local</th><th>Cultura</th>
+        <th>Data</th><th>Semana</th><th>Atividade</th><th>Local</th><th>Cultura</th><th>Plantio</th>
         <th>Operador</th><th>Máquina / implemento</th><th class="num">Horas</th><th>Status</th></tr></thead>
       <tbody>${lista.map(a => `<tr data-id="${a.id}" class="${STATUS_CLASSE[statusDe(a)]}">
         <td class="ce"><input type="checkbox" class="at-cx" value="${a.id}"></td>
@@ -356,11 +357,12 @@ TELAS.atividades = el => {
         <td><strong>${esc(nomeAtividade(a))}</strong></td>
         <td>${esc(q.nome('locais', a.local_id))}</td>
         <td><span class="pc-cor" style="background:${esc(corCultura(a.cultura_id))}"></span>${esc(q.nome('culturas', a.cultura_id))}</td>
+        <td>${esc(a.plantio || '')}</td>
         <td>${esc(q.nome('operadores', a.operador_id)) || '<span class="pc-falta">a definir</span>'}</td>
         <td>${esc(maqImpl(a))}</td>
         <td class="num">${fmtNum(a.horas_realizadas ?? a.horas_previstas)}</td>
         <td>${etqStatus(a)}</td></tr>`).join('')}</tbody>
-      <tfoot><tr class="pc-total"><td></td><td colspan="7">Total: ${lista.length} atividade${lista.length > 1 ? 's' : ''}</td>
+      <tfoot><tr class="pc-total"><td></td><td colspan="8">Total: ${lista.length} atividade${lista.length > 1 ? 's' : ''}</td>
         <td class="num">${fmtNum(horas)}</td><td></td></tr></tfoot>
     </table></div>`;
     alvo.querySelectorAll('tbody tr').forEach(tr => tr.onclick = e => {
@@ -433,6 +435,7 @@ function linhasPlanilha(lista) {
     'Fazenda': q.nome('fazendas', fazendaDoLocal(a.local_id)),
     'Local': q.nome('locais', a.local_id),
     'Cultura': q.nome('culturas', a.cultura_id),
+    'Plantio': a.plantio || '',
     'Atividade': nomeAtividade(a),
     'Operador': q.nome('operadores', a.operador_id),
     'Máquina': q.nome('maquinas', a.maquina_id),
@@ -448,7 +451,7 @@ function exportarExcel(lista, nome = 'Programacao_Campo') {
   if (!window.XLSX) return aviso('A biblioteca do Excel não carregou. Abra o app com internet uma vez.', true);
   if (!lista.length) return aviso('Nada para exportar.', true);
   const ws = XLSX.utils.json_to_sheet(linhasPlanilha(lista));
-  ws['!cols'] = [10, 10, 10, 14, 26, 18, 24, 18, 16, 14, 10, 10, 12, 30].map(w => ({ wch: w }));
+  ws['!cols'] = [10, 10, 10, 14, 26, 18, 12, 24, 18, 16, 14, 10, 10, 12, 30].map(w => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Tarefas');
   XLSX.writeFile(wb, `${nome}_${hoje()}.xlsx`);

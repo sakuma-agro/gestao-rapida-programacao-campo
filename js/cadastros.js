@@ -203,7 +203,8 @@ function previaImportacao(alvo, linhas, aba) {
       implemento: limpa(col(l, 'implemento')),
       horas: num(col(l, 'duracao (h)', 'duracao', 'horas')),
       status: STATUS_PLANILHA[chaveNome(col(l, 'status'))] || 'Planejado',
-      obs: limpa(col(l, 'observacoes', 'observacao')) || null
+      obs: limpa(col(l, 'observacoes', 'observacao')) || null,
+      plantio: limpa(col(l, 'plantio')) || null
     };
     // local novo: a fazenda sai do nome ("Pivot 2 - Três Riachos" → Três Riachos)
     [['locais', reg.local], ['culturas', reg.cultura], ['tipos_atividade', reg.atividade],
@@ -276,7 +277,7 @@ function previaImportacao(alvo, linhas, aba) {
         local_id: idDe('locais', r.local), cultura_id: idDe('culturas', r.cultura),
         tipo_id: idDe('tipos_atividade', r.atividade), operador_id: idDe('operadores', r.operador),
         maquina_id: idDe('maquinas', r.maquina), implemento_id: idDe('implementos', r.implemento),
-        horas_previstas: r.horas, status: r.status, observacoes: r.obs, ativo: true
+        horas_previstas: r.horas, status: r.status, observacoes: r.obs, plantio: r.plantio, ativo: true
       };
       const k = [a.data, a.local_id, a.cultura_id, a.tipo_id].join('|');
       if (existentes.has(k)) { puladas++; continue; }

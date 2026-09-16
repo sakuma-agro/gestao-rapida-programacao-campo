@@ -15,7 +15,7 @@ const FRASE_LOP = 'Inteligência para o agronegócio';
 
 /* ---------------------------------------------------------------- tela */
 
-const filtroRel = { tipo: 'semana', ano: null, mes: null, semana: null, de: '', ate: '',
+const filtroRel = { agrupar: 'fazenda', tipo: 'semana', ano: null, mes: null, semana: null, de: '', ate: '',
                     fazenda: '', local: '', cultura: '', operador: '', status: '' };
 
 function periodoRel(f) {
@@ -59,6 +59,10 @@ TELAS.relatorio = el => {
       <select data-r="local">${opcoesLocais(f.local, 'Todos os locais')}</select>
       <select data-r="cultura">${opcoes(q.ordenado('culturas'), f.cultura, 'Todas as culturas')}</select>
       <select data-r="operador">${opcoes(q.ordenado('operadores'), f.operador, 'Todos os operadores')}</select>
+      <select data-r="agrupar" title="Separar o relatório por">
+        <option value="fazenda"${f.agrupar === 'fazenda' ? ' selected' : ''}>Separar por fazenda</option>
+        <option value="operador"${f.agrupar === 'operador' ? ' selected' : ''}>Separar por operador</option>
+      </select>
       <select data-r="status">${opcoes([{ id: 'pendentes', nome: 'Pendentes' }, ...STATUS_TODOS], f.status, 'Todos os status')}</select>
     </div>
     <div class="acoes">
@@ -93,7 +97,7 @@ TELAS.relatorio = el => {
         <div class="cartao"><b>${ind.pct}%</b><span>cumprimento</span></div>
       </div>
       <p class="sub">Período: <strong>${esc(p.rotulo)}</strong></p>
-      ${lista.length ? tabelaHtml(lista) : '<div class="vazio"><p>Nenhuma atividade nesse período.</p></div>'}`;
+      ${lista.length ? tabelaHtml(lista, f.agrupar) : '<div class="vazio"><p>Nenhuma atividade nesse período.</p></div>'}`;
   }
   previa();
 
@@ -102,31 +106,48 @@ TELAS.relatorio = el => {
     const itens = lista.filter(a => statusDe(a) !== 'Cancelado');
     if (!itens.length) return aviso('Nenhuma atividade nesse período.', true);
     gerarRelatorio({ tipo: 'ficha', titulo: 'Ficha de conferência das atividades', periodo: p.rotulo,
-                     fazenda: f.fazenda, lista: itens, arquivo: 'Ficha_' + p.arquivo });
+                     fazenda: f.fazenda, lista: itens, agrupar: f.agrupar,
+                     arquivo: (f.agrupar === 'operador' ? 'Ficha_por_operador_' : 'Ficha_') + p.arquivo });
   };
   el.querySelector('#rl-excel').onclick = () => { const { p, lista } = listaAtual(); exportarExcel(lista, 'Programacao_' + p.arquivo); };
   el.querySelector('#rl-pdf').onclick = () => {
     const { p, lista } = listaAtual();
     if (!lista.length) return aviso('Nenhuma atividade nesse período.', true);
-    gerarRelatorio({ titulo: 'Relatório de atividades de campo', periodo: p.rotulo,
-                     fazenda: f.fazenda, lista, arquivo: 'Atividades_' + p.arquivo });
+    gerarRelatorio({ titulo: f.agrupar === 'operador' ? 'Relatório de atividades por operador' : 'Relatório de atividades de campo',
+                     periodo: p.rotulo, fazenda: f.fazenda, lista, agrupar: f.agrupar,
+                     arquivo: (f.agrupar === 'operador' ? 'Atividades_por_operador_' : 'Atividades_') + p.arquivo });
   };
 };
 
 /* a mesma tabela do PDF, na tela */
-function tabelaHtml(lista) {
+function tabelaHtml(lista, modo = 'fazenda') {
   let html = `<div class="rolagem"><table class="tabela pc-grade pc-rel"><thead><tr>
-    <th>Data</th><th>Sem.</th><th>Tarefa</th><th>Local</th><th>Cultura</th><th>Operador</th><th>Máquina / implemento</th><th>Status</th>
+    <th>Data</th><th>Sem.</th><th>Tarefa</th><th>Local</th><th>Cultura</th><th>Plantio</th><th>Operador</th><th>Máquina / implemento</th><th>Status</th>
     </tr></thead><tbody>`;
-  agruparPorFazenda(lista).forEach(([faz, itens]) => {
-    html += `<tr class="pc-grupo"><td colspan="8">${esc(faz)} · ${itens.length}</td></tr>`;
+  agrupar(lista, modo).forEach(([faz, itens]) => {
+    html += `<tr class="pc-grupo"><td colspan="9">${esc(faz)} · ${itens.length}</td></tr>`;
     html += itens.map(a => `<tr class="${STATUS_CLASSE[statusDe(a)]}">
       <td>${br(a.data)}</td><td>S${semanaDe(a.data)}</td><td>${esc(nomeAtividade(a))}</td>
-      <td>${esc(q.nome('locais', a.local_id))}</td><td>${esc(q.nome('culturas', a.cultura_id))}</td>
+      <td>${esc(q.nome('locais', a.local_id))}</td><td>${esc(q.nome('culturas', a.cultura_id))}</td><td>${esc(a.plantio || '')}</td>
       <td>${esc(q.nome('operadores', a.operador_id)) || '<span class="pc-falta">a definir</span>'}</td>
       <td>${esc(maqImpl(a))}</td><td>${etqStatus(a)}</td></tr>`).join('');
   });
-  return html + `</tbody><tfoot><tr class="pc-total"><td colspan="8">Total: ${lista.length} atividade${lista.length > 1 ? 's' : ''}</td></tr></tfoot></table></div>`;
+  return html + `</tbody><tfoot><tr class="pc-total"><td colspan="9">Total: ${lista.length} atividade${lista.length > 1 ? 's' : ''}</td></tr></tfoot></table></div>`;
+}
+
+/* Separa a lista em grupos: por fazenda (padrão) ou por operador. */
+function agrupar(lista, modo = 'fazenda') {
+  if (modo !== 'operador') return agruparPorFazenda(lista);
+  const grupos = new Map();
+  lista.forEach(a => {
+    const k = a.operador_id || '';
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(a);
+  });
+  return [...grupos.entries()]
+    .map(([k, v]) => [k ? q.nome('operadores', k) : 'Operador a definir', v.sort((a, b) => a.data.localeCompare(b.data) ||
+      q.nome('locais', a.local_id).localeCompare(q.nome('locais', b.local_id), 'pt-BR')), k])
+    .sort((a, b) => (a[2] ? 0 : 1) - (b[2] ? 0 : 1) || a[0].localeCompare(b[0], 'pt-BR'));
 }
 
 function agruparPorFazenda(lista) {
@@ -210,33 +231,33 @@ async function montarPdf(o) {
 
   const tabela = (lista) => {
     const corpo = [];
-    agruparPorFazenda(lista).forEach(([faz, itens]) => {
-      corpo.push([{ content: `${faz}  ·  ${itens.length} atividade${itens.length > 1 ? 's' : ''}`, colSpan: 8,
+    agrupar(lista, o.agrupar).forEach(([faz, itens]) => {
+      corpo.push([{ content: `${faz}  ·  ${itens.length} atividade${itens.length > 1 ? 's' : ''}`, colSpan: 9,
                     styles: { fillColor: COR.marromClaro, textColor: COR.marrom, fontStyle: 'bold' } }]);
       itens.forEach(a => corpo.push([
         br(a.data) + ' ' + diaSemana(a.data), 'S' + semanaDe(a.data), nomeAtividade(a),
-        q.nome('locais', a.local_id), q.nome('culturas', a.cultura_id),
+        q.nome('locais', a.local_id), q.nome('culturas', a.cultura_id), a.plantio || '',
         q.nome('operadores', a.operador_id) || 'a definir', maqImpl(a), statusDe(a)
       ]));
     });
     corpo.push([{ content: `Total: ${lista.length} atividade${lista.length === 1 ? '' : 's'}` +
-                  `   ·   ${ind2(lista).concluido} concluída(s)   ·   ${ind2(lista).pct}% de cumprimento`, colSpan: 8,
+                  `   ·   ${ind2(lista).concluido} concluída(s)   ·   ${ind2(lista).pct}% de cumprimento`, colSpan: 9,
                   styles: { fillColor: COR.verdeTotal, textColor: COR.marrom, fontStyle: 'bold' } }]);
     doc.autoTable({
       startY: y, margin: { left: M, right: M, bottom: 18, top: 14 },
-      head: [['Data', 'Sem.', 'Tarefa', 'Local', 'Cultura', 'Operador', 'Máquina / implemento', 'Status']],
+      head: [['Data', 'Sem.', 'Tarefa', 'Local', 'Cultura', 'Plantio', 'Operador', 'Máquina / implemento', 'Status']],
       body: corpo,
       theme: 'grid',
       styles: { font: 'helvetica', fontSize: 8.5, textColor: COR.cinza, lineColor: COR.verdeLinha,
                 lineWidth: 0.2, cellPadding: 1.6, fillColor: COR.verdeClaro, valign: 'middle' },
       headStyles: { fillColor: COR.verde, textColor: COR.branco, fontStyle: 'bold', lineColor: COR.verde },
-      columnStyles: { 0: { cellWidth: 24 }, 1: { cellWidth: 11, halign: 'center' }, 2: { cellWidth: 46 },
-                      3: { cellWidth: 44 }, 4: { cellWidth: 30 }, 5: { cellWidth: 36 },
-                      6: { cellWidth: 52 }, 7: { cellWidth: 30, halign: 'center' } },
+      columnStyles: { 0: { cellWidth: 23 }, 1: { cellWidth: 10, halign: 'center' }, 2: { cellWidth: 42 },
+                      3: { cellWidth: 38 }, 4: { cellWidth: 26 }, 5: { cellWidth: 20 }, 6: { cellWidth: 34 },
+                      7: { cellWidth: 51 }, 8: { cellWidth: 29, halign: 'center' } },
       didParseCell: d => {
         if (d.section !== 'body' || d.cell.raw == null || typeof d.cell.raw === 'object') return;
-        if (d.column.index === 5 && d.cell.raw === 'a definir') { d.cell.styles.textColor = COR.cinzaClaro; return; }
-        if (d.column.index !== 7) return;
+        if (d.column.index === 6 && d.cell.raw === 'a definir') { d.cell.styles.textColor = COR.cinzaClaro; return; }
+        if (d.column.index !== 8) return;
         const s = d.cell.raw;
         d.cell.styles.fontStyle = 'bold';
         if (s === 'Concluído') d.cell.styles.textColor = COR.ok;
@@ -274,12 +295,6 @@ async function montarPdf(o) {
     y += alt + 5;
   }
 
-  /* ---- responsável */
-  if (y > A - 24) { doc.addPage(); y = 20; }
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(COR.cinza);
-  doc.text('Responsável pela emissão', M, y + 2);
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(COR.marrom);
-  doc.text(RESPONSAVEL, M, y + 7);
 
   /* ---- pé de todas as folhas */
   const total = doc.getNumberOfPages();
@@ -350,4 +365,4 @@ async function gerarRelatorio(o) {
   });
 }
 
-Object.assign(window, { gerarRelatorio, montarPdf, tabelaHtml });
+Object.assign(window, { gerarRelatorio, montarPdf, tabelaHtml, agrupar });

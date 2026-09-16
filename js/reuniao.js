@@ -196,7 +196,7 @@ function blocoPeriodo(titulo, P, lista, retrospectiva = false) {
       const st = statusDe(a);
       return `<li class="${STATUS_CLASSE[st]}">
         <div class="info"><strong>${esc(nomeAtividade(a))} – ${esc(q.nome('culturas', a.cultura_id))}</strong>
-          <small>${br(a.data)} (${esc(diaSemana(a.data))}) · ${esc(q.nome('locais', a.local_id))}</small>
+          <small>${br(a.data)} (${esc(diaSemana(a.data))}) · ${esc(q.nome('locais', a.local_id))}${a.plantio ? ' · Plantio ' + esc(a.plantio) : ''}</small>
           <small>${esc(q.nome('operadores', a.operador_id) || 'operador a definir')}${maqImpl(a) ? ' · ' + esc(maqImpl(a)) : ''}</small></div>
         ${etqStatus(st)}
         <div class="pc-mini">
