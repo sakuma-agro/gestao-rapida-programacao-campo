@@ -38,9 +38,32 @@ TELAS.painel = el => {
     <div class="pc-barra-quadro">
       <div class="legenda pc-legenda">${q.ordenado('culturas').map(c =>
       `<span class="lg"><i style="background:${esc(c.cor)}"></i>${esc(c.nome)}</span>`).join('')}</div>
+      <div class="pc-zoom" role="group" aria-label="Tamanho do painel">
+        <button type="button" class="btn neutro" data-z="-1" title="Diminuir">A−</button>
+        <span id="pn-zv"></span>
+        <button type="button" class="btn neutro" data-z="1" title="Ampliar">A+</button>
+        <button type="button" class="btn neutro" id="pn-cheia">Tela cheia</button>
+      </div>
       <button type="button" class="btn" id="pn-novo">Lançar atividade</button>
     </div>
     <div class="rolagem pc-rolagem" id="pn-quadro"></div>`;
+
+  // tamanho do painel: fica guardado neste aparelho
+  const lerZoom = () => { try { return Number(localStorage.getItem('pc.zoom')) || 1.25; } catch (e) { return 1.25; } };
+  const aplicarZoom = z => {
+    z = Math.min(2.2, Math.max(0.8, Math.round(z * 100) / 100));
+    try { localStorage.setItem('pc.zoom', z); } catch (e) { /* sem armazenamento */ }
+    el.querySelector('#pn-quadro').style.setProperty('--z', z);
+    el.querySelector('#pn-zv').textContent = Math.round(z * 100) + '%';
+    return z;
+  };
+  let zoom = aplicarZoom(lerZoom());
+  el.querySelectorAll('[data-z]').forEach(b => b.onclick = () => { zoom = aplicarZoom(zoom + 0.15 * Number(b.dataset.z)); });
+  el.querySelector('#pn-cheia').onclick = () => {
+    const q = el.querySelector('#pn-quadro');
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (q.requestFullscreen) q.requestFullscreen().catch(() => aviso('Este aparelho não abre em tela cheia.', true));
+  };
 
   el.querySelectorAll('[data-p]').forEach(s => s.onchange = () => {
     f[s.dataset.p] = s.dataset.p === 'ano' ? Number(s.value) : s.value;
@@ -70,15 +93,21 @@ TELAS.painel = el => {
     });
 
     const colAgora = agora.ano === f.ano ? agora.mes + '|' + agora.semana : '';
+    // no ano inteiro, os locais aparecem de novo entre junho e julho, como no quadro da parede
+    const meio = meses.includes(6) && meses.includes(7) ? 6 : 0;
     let html = `<table class="pc-quadro"><thead><tr><th class="pc-loc" rowspan="2">Local</th>
-      ${meses.map(m => `<th colspan="4" class="pc-mes${m === agora.mes && agora.ano === f.ano ? ' agora' : ''}">${MESES[m - 1]}</th>`).join('')}</tr>
+      ${meses.map(m => `<th colspan="4" class="pc-mes${m === agora.mes && agora.ano === f.ano ? ' agora' : ''}">${MESES[m - 1]}</th>` +
+        (m === meio ? '<th class="pc-loc2" rowspan="2">Local</th>' : '')).join('')}</tr>
       <tr>${meses.map(m => [1, 2, 3, 4].map(s =>
         `<th class="pc-sem${colAgora === m + '|' + s ? ' agora' : ''}${s === 1 ? ' ini' : ''}">S${s}</th>`).join('')).join('')}</tr></thead><tbody>`;
 
     fazendasOrdenadas().filter(fz => !f.fazenda || fz.id === f.fazenda).forEach(fz => {
       const locais = locaisOrdenados().filter(l => l.fazenda_id === fz.id);
       if (!locais.length) return;
-      html += `<tr class="pc-faz"><th class="pc-loc">${esc(fz.nome)}</th><td colspan="${meses.length * 4}"></td></tr>`;
+      html += meio
+        ? `<tr class="pc-faz"><th class="pc-loc">${esc(fz.nome)}</th><td colspan="${meses.filter(m => m <= meio).length * 4}"></td>` +
+          `<th class="pc-loc2">${esc(fz.nome)}</th><td colspan="${meses.filter(m => m > meio).length * 4}"></td></tr>`
+        : `<tr class="pc-faz"><th class="pc-loc">${esc(fz.nome)}</th><td colspan="${meses.length * 4}"></td></tr>`;
       locais.forEach(l => {
         html += `<tr><th class="pc-loc">${esc(l.nome)}</th>`;
         meses.forEach(m => [1, 2, 3, 4].forEach(s => {
@@ -89,6 +118,7 @@ TELAS.painel = el => {
               style="--cor:${esc(corCultura(a.cultura_id))}"
               title="${esc(br(a.data) + ' · ' + nomeAtividade(a) + ' – ' + q.nome('culturas', a.cultura_id) + ' · ' + statusDe(a) + (a.operador_id ? ' · ' + q.nome('operadores', a.operador_id) : ''))}">
               <b>${partes(a.data).dia}</b> ${esc(nomeAtividade(a))} – ${esc(q.nome('culturas', a.cultura_id))}</div>`).join('')}</td>`;
+          if (m === meio && s === 4) html += `<th class="pc-loc2">${esc(l.nome)}</th>`;
         }));
         html += '</tr>';
       });
