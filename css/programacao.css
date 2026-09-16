@@ -164,3 +164,27 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 205px)}
 @media (max-width:640px){ .pc-barra-quadro .btn{width:100%} }
 .pc-maisfiltros summary::before{content:'▸';margin-right:8px;transition:transform .15s}
 .pc-maisfiltros[open] summary::before{transform:rotate(90deg)}
+
+/* ---------- painel ampliado (--z = tamanho escolhido em A− / A+) ---------- */
+.pc-rolagem{--z:1.25}
+.pc-quadro{font-size:calc(12px * var(--z));min-width:100%}
+.pc-quadro thead tr:first-child th{height:calc(32px * var(--z));font-size:calc(14px * var(--z))}
+.pc-quadro thead tr:nth-child(2) th{top:calc(32px * var(--z));font-size:calc(12px * var(--z))}
+.pc-quadro .pc-loc{min-width:calc(200px * var(--z));max-width:calc(200px * var(--z));font-size:calc(13px * var(--z))}
+.pc-quadro .pc-loc2{
+  background:var(--verde-claro);color:var(--cinza);text-align:left;padding:6px 8px;
+  min-width:calc(170px * var(--z));max-width:calc(170px * var(--z));font-size:calc(13px * var(--z));
+  border-left:3px solid var(--marrom);border-right:3px solid var(--marrom);
+}
+.pc-quadro thead .pc-loc2{background:var(--verde);color:#fff;position:sticky;top:0;z-index:2}
+.pc-quadro tr.pc-faz th.pc-loc2{background:var(--marrom);color:#fff;text-transform:uppercase;letter-spacing:.03em}
+.pc-cel{min-width:calc(130px * var(--z));width:calc(130px * var(--z));padding:calc(3px * var(--z));height:calc(44px * var(--z))}
+.pc-etq{font-size:calc(11.5px * var(--z));padding:calc(3px * var(--z)) calc(5px * var(--z)) calc(3px * var(--z)) calc(7px * var(--z))}
+.pc-rolagem{max-height:calc(100vh - 190px)}
+body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
+.pc-zoom{display:flex;align-items:center;gap:6px}
+.pc-zoom .btn{min-height:40px;padding:6px 12px}
+.pc-zoom span{min-width:48px;text-align:center;font-weight:bold;color:var(--marrom)}
+.pc-rolagem:fullscreen{max-height:none;height:100vh;background:var(--branco);border:0;border-radius:0}
+@media (max-width:640px){ .pc-zoom{width:100%;justify-content:space-between} }
+.pc-quadro tr.pc-faz th.pc-loc,.pc-quadro tr.pc-faz th.pc-loc2{font-size:calc(12px * var(--z))}
