@@ -10,7 +10,6 @@ const COR = {
   marrom: '#744F28', marromClaro: '#EFE6DB', cinza: '#51534A', cinzaClaro: '#8A8C83',
   branco: '#FFFFFF', ok: '#4E8B1F', atr: '#C0392B', atrFundo: '#F8DAD6', pend: '#FFF1C9', canc: '#A5A79F'
 };
-const RESPONSAVEL = 'Guilherme Lopes — Gerente Administrativo';
 const FRASE_LOP = 'Inteligência para o agronegócio';
 
 /* ---------------------------------------------------------------- tela */
@@ -130,7 +129,7 @@ function tabelaHtml(lista, modo = 'fazenda') {
   agrupar(lista, modo).forEach(([faz, itens]) => {
     html += `<tr class="pc-grupo"><td colspan="9">${esc(faz)} · ${itens.length}</td></tr>`;
     html += itens.map(a => `<tr class="${STATUS_CLASSE[statusDe(a)]}">
-      <td>${br(a.data)}</td><td>S${semanaDe(a.data)}</td><td>${esc(nomeAtividade(a))}</td>
+      <td>${br(a.data)}</td><td>S${semanaDe(a.data)}</td><td>${esc(nomeAtividade(a))}${a.prioridade ? ' ' + etqPrioridade(a, true) : ''}</td>
       <td>${esc(q.nome('locais', a.local_id))}</td><td>${esc(q.nome('culturas', a.cultura_id))}</td><td>${esc(a.plantio || '')}</td>
       <td>${esc(q.nome('operadores', a.operador_id)) || '<span class="pc-falta">a definir</span>'}</td>
       <td>${esc(maqImpl(a))}</td><td>${etqStatus(a)}</td></tr>`).join('');
@@ -233,15 +232,16 @@ async function montarPdf(o) {
   };
 
   const tabela = (lista) => {
-    const corpo = [];
+    const corpo = [], pri = [];
     agrupar(lista, o.agrupar).forEach(([faz, itens]) => {
       corpo.push([{ content: `${faz}  ·  ${itens.length} atividade${itens.length > 1 ? 's' : ''}`, colSpan: 9,
                     styles: { fillColor: COR.marromClaro, textColor: COR.marrom, fontStyle: 'bold' } }]);
-      itens.forEach(a => corpo.push([
-        br(a.data) + ' ' + diaSemana(a.data), 'S' + semanaDe(a.data), nomeAtividade(a),
+      itens.forEach(a => { pri[corpo.length] = a.prioridade; corpo.push([
+        br(a.data) + ' ' + diaSemana(a.data), 'S' + semanaDe(a.data),
+        nomeAtividade(a) + (a.prioridade ? '\n' + nomePrioridade(a.prioridade).toUpperCase() : ''),
         q.nome('locais', a.local_id), q.nome('culturas', a.cultura_id), a.plantio || '',
         q.nome('operadores', a.operador_id) || 'a definir', maqImpl(a), statusDe(a)
-      ]));
+      ]); });
     });
     corpo.push([{ content: `Total: ${lista.length} atividade${lista.length === 1 ? '' : 's'}` +
                   `   ·   ${ind2(lista).concluido} concluída(s)   ·   ${ind2(lista).pct}% de cumprimento`, colSpan: 9,
@@ -260,6 +260,13 @@ async function montarPdf(o) {
       didParseCell: d => {
         if (d.section !== 'body' || d.cell.raw == null || typeof d.cell.raw === 'object') return;
         if (d.column.index === 6 && d.cell.raw === 'a definir') { d.cell.styles.textColor = COR.cinzaClaro; return; }
+        if (d.column.index === 2 && pri[d.row.index]) {
+          const urg = pri[d.row.index] === 'urgente';
+          d.cell.styles.fillColor = urg ? '#F8D3CE' : '#FFF0B3';
+          d.cell.styles.textColor = urg ? COR.atr : COR.marrom;
+          d.cell.styles.fontStyle = 'bold';
+          return;
+        }
         if (d.column.index !== 8) return;
         const s = d.cell.raw;
         d.cell.styles.fontStyle = 'bold';
