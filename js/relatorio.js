@@ -12,10 +12,24 @@ const COR = {
 };
 const FRASE_LOP = 'Inteligência para o agronegócio';
 
+/* Prioridade sempre visível no relatório: quem não tem marcação sai como "Normal". */
+const rotuloPri = a => {
+  const p = PRIORIDADES.find(x => x.id === a.prioridade);
+  return p ? p.curto : 'Normal';
+};
+const etqPriSempre = a => {
+  const p = PRIORIDADES.find(x => x.id === a.prioridade);
+  return p ? `<span class="etq-pri pri-${p.id}" title="${esc(p.nome)}">${esc(p.curto)}</span>`
+           : '<span class="etq-pri pri-normal">Normal</span>';
+};
+/* Ordem do relatório: dia a dia e, dentro do mesmo dia, urgentes primeiro,
+   depois as importantes e por último as normais. */
+const porPrioridade = (a, b) => a.data.localeCompare(b.data) || pesoPrioridade(a) - pesoPrioridade(b);
+
 /* ---------------------------------------------------------------- tela */
 
 const filtroRel = { agrupar: 'fazenda', tipo: 'semana', ano: null, mes: null, semana: null, de: '', ate: '',
-                    fazenda: '', local: '', cultura: '', operador: '', status: '' };
+                    fazenda: '', local: '', cultura: '', operador: '', status: '', umaPorPagina: false };
 
 function periodoRel(f) {
   if (f.tipo === 'semana') {
@@ -44,7 +58,7 @@ TELAS.relatorio = el => {
 
   el.innerHTML = `
     <h1>Relatório das atividades</h1>
-    <p class="sub">Escolha o período e os filtros. O PDF sai com data, tarefa, local, cultura, operador e status.</p>
+    <p class="sub">Escolha o período e os filtros. O PDF sai com data, tarefa, prioridade, local, cultura, operador e status, em ordem de data e, dentro do dia, de prioridade.</p>
     <div class="abas" id="rl-tipo">${[['semana', 'Semana'], ['mes', 'Mês'], ['ano', 'Ano'], ['datas', 'Datas']].map(([k, r]) =>
       `<button type="button" data-t="${k}" class="${f.tipo === k ? 'ativo' : ''}">${r}</button>`).join('')}</div>
     <div class="filtros pc-filtros">
@@ -63,6 +77,10 @@ TELAS.relatorio = el => {
         <option value="operador"${f.agrupar === 'operador' ? ' selected' : ''}>Separar por operador</option>
       </select>
       <select data-r="status">${opcoes([{ id: 'pendentes', nome: 'Pendentes' }, ...STATUS_TODOS], f.status, 'Todos os status')}</select>
+      <label class="pc-cx pc-cx-filtro" title="Cada fazenda (ou operador) começa numa folha nova, para entregar em separado">
+        <input type="checkbox" data-r="umaPorPagina"${f.umaPorPagina ? ' checked' : ''}>
+        ${f.agrupar === 'operador' ? 'Um operador' : 'Uma fazenda'} por página
+      </label>
     </div>
     <div class="acoes">
       <button type="button" class="btn" id="rl-pdf">Gerar PDF</button>
@@ -75,7 +93,9 @@ TELAS.relatorio = el => {
   el.querySelectorAll('#rl-tipo button').forEach(b => b.onclick = () => { f.tipo = b.dataset.t; TELAS.relatorio(el); });
   el.querySelectorAll('[data-r]').forEach(c => c.onchange = () => {
     const k = c.dataset.r;
-    f[k] = ['ano', 'mes', 'semana'].includes(k) ? Number(c.value) : c.value;
+    f[k] = c.type === 'checkbox' ? c.checked
+         : ['ano', 'mes', 'semana'].includes(k) ? Number(c.value) : c.value;
+    if (k === 'agrupar') return TELAS.relatorio(el);   // o rótulo do botão muda junto
     previa();
   });
 
@@ -116,7 +136,7 @@ TELAS.relatorio = el => {
     const { p, lista } = listaAtual();
     if (!lista.length) return aviso('Nenhuma atividade nesse período.', true);
     gerarRelatorio({ titulo: f.agrupar === 'operador' ? 'Relatório de atividades por operador' : 'Relatório de atividades de campo',
-                     periodo: p.rotulo, fazenda: f.fazenda, lista, agrupar: f.agrupar,
+                     periodo: p.rotulo, fazenda: f.fazenda, lista, agrupar: f.agrupar, umaPorPagina: f.umaPorPagina,
                      arquivo: (f.agrupar === 'operador' ? 'Atividades_por_operador_' : 'Atividades_') + p.arquivo });
   };
 };
@@ -124,17 +144,18 @@ TELAS.relatorio = el => {
 /* a mesma tabela do PDF, na tela */
 function tabelaHtml(lista, modo = 'fazenda') {
   let html = `<div class="rolagem"><table class="tabela pc-grade pc-rel"><thead><tr>
-    <th>Data</th><th>Sem.</th><th>Tarefa</th><th>Local</th><th>Cultura</th><th>Plantio</th><th>Operador</th><th>Máquina / implemento</th><th>Status</th>
+    <th>Data</th><th>Sem.</th><th>Tarefa</th><th>Prioridade</th><th>Local</th><th>Cultura</th><th>Plantio</th><th>Operador</th><th>Máquina / implemento</th><th>Status</th>
     </tr></thead><tbody>`;
   agrupar(lista, modo).forEach(([faz, itens]) => {
-    html += `<tr class="pc-grupo"><td colspan="9">${esc(faz)} · ${itens.length}</td></tr>`;
+    html += `<tr class="pc-grupo"><td colspan="10">${esc(faz)} · ${itens.length}</td></tr>`;
     html += itens.map(a => `<tr class="${STATUS_CLASSE[statusDe(a)]}">
-      <td>${br(a.data)}</td><td>S${semanaDe(a.data)}</td><td>${esc(nomeAtividade(a))}${a.prioridade ? ' ' + etqPrioridade(a, true) : ''}</td>
+      <td>${br(a.data)}</td><td>S${semanaDe(a.data)}</td><td>${esc(nomeAtividade(a))}</td>
+      <td>${etqPriSempre(a)}</td>
       <td>${esc(q.nome('locais', a.local_id))}</td><td>${esc(q.nome('culturas', a.cultura_id))}</td><td>${esc(a.plantio || '')}</td>
       <td>${esc(q.nome('operadores', a.operador_id)) || '<span class="pc-falta">a definir</span>'}</td>
       <td>${esc(maqImpl(a))}</td><td>${etqStatus(a)}</td></tr>`).join('');
   });
-  return html + `</tbody><tfoot><tr class="pc-total"><td colspan="9">Total: ${lista.length} atividade${lista.length > 1 ? 's' : ''}</td></tr></tfoot></table></div>`;
+  return html + `</tbody><tfoot><tr class="pc-total"><td colspan="10">Total: ${lista.length} atividade${lista.length > 1 ? 's' : ''}</td></tr></tfoot></table></div>`;
 }
 
 /* Separa a lista em grupos: por fazenda (padrão) ou por operador. */
@@ -147,7 +168,7 @@ function agrupar(lista, modo = 'fazenda') {
     grupos.get(k).push(a);
   });
   return [...grupos.entries()]
-    .map(([k, v]) => [k ? q.nome('operadores', k) : 'Operador a definir', v.sort((a, b) => a.data.localeCompare(b.data) ||
+    .map(([k, v]) => [k ? q.nome('operadores', k) : 'Operador a definir', v.sort((a, b) => porPrioridade(a, b) ||
       q.nome('locais', a.local_id).localeCompare(q.nome('locais', b.local_id), 'pt-BR')), k])
     .sort((a, b) => (a[2] ? 0 : 1) - (b[2] ? 0 : 1) || a[0].localeCompare(b[0], 'pt-BR'));
 }
@@ -161,7 +182,7 @@ function agruparPorFazenda(lista) {
     grupos.get(fz).push(a);
   });
   return [...grupos.entries()].filter(([, v]) => v.length)
-    .map(([k, v]) => [q.nome('fazendas', k) || 'Sem fazenda', v.sort((a, b) => a.data.localeCompare(b.data))]);
+    .map(([k, v]) => [q.nome('fazendas', k) || 'Sem fazenda', v.sort(porPrioridade)]);
 }
 
 /* ---------------------------------------------------------------- imagens */
@@ -182,7 +203,7 @@ async function montarPdf(o) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const L = doc.internal.pageSize.getWidth(), A = doc.internal.pageSize.getHeight();
-  const M = 12;
+  const M = 8;            // margem lateral enxuta: sobra mais papel para a tabela
   const emitido = new Date();
   const emitidoTxt = emitido.toLocaleDateString('pt-BR') + ' ' + emitido.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   const sakuma = await imagemPdf('img/sakuma-logo.png');
@@ -190,21 +211,21 @@ async function montarPdf(o) {
   doc.setFont('helvetica', 'normal');   // no PDF, a Helvetica é a Arial
 
   /* ---- cabeçalho (só na primeira folha) */
-  const hLogo = 17, wLogo = hLogo * sakuma.w / sakuma.h;
-  doc.addImage(sakuma.url, sakuma.tipo, M, 9, wLogo, hLogo);
-  const xT = M + wLogo + 7;
+  const hLogo = 16, wLogo = hLogo * sakuma.w / sakuma.h;
+  doc.addImage(sakuma.url, sakuma.tipo, M, 6, wLogo, hLogo);
+  const xT = M + wLogo + 6;
   doc.setTextColor(COR.marrom); doc.setFont('helvetica', 'bold'); doc.setFontSize(16);
-  doc.text(o.titulo, xT, 15.5);
+  doc.text(o.titulo, xT, 12.5);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(COR.cinza);
-  doc.text('Gestão Rápida · Programação Campo', xT, 21);
-  doc.text(`Período: ${o.periodo}` + (o.fazenda ? `   ·   Fazenda: ${q.nome('fazendas', o.fazenda)}` : '   ·   Todas as fazendas'), xT, 26);
+  doc.text('Gestão Rápida · Programação Campo', xT, 17.8);
+  doc.text(`Período: ${o.periodo}` + (o.fazenda ? `   ·   Fazenda: ${q.nome('fazendas', o.fazenda)}` : '   ·   Todas as fazendas'), xT, 22.6);
   doc.setFontSize(8.5); doc.setTextColor(COR.cinzaClaro);
-  doc.text('Emitido em ' + emitidoTxt, L - M, 15.5, { align: 'right' });
+  doc.text('Emitido em ' + emitidoTxt, L - M, 12.5, { align: 'right' });
   doc.setDrawColor(COR.verde); doc.setLineWidth(0.9);
-  doc.line(M, 30, L - M, 30);
+  doc.line(M, 26, L - M, 26);
 
   /* ---- indicadores */
-  let y = 35;
+  let y = 30;
   const ind = indicadores(o.lista);
   const cards = [['Programadas', ind.total], ['Concluídas', ind.concluido], ['A fazer', ind.andamento + ind.planejado],
                  ['Atrasadas', ind.atrasado], ['Canceladas', ind.cancelado], ['Cumprimento', ind.pct + '%']];
@@ -214,60 +235,87 @@ async function montarPdf(o) {
     const alerta = rot === 'Atrasadas' && ind.atrasado > 0;
     doc.setFillColor(alerta ? COR.atrFundo : COR.verdeClaro);
     doc.setDrawColor(alerta ? COR.atr : COR.verdeLinha); doc.setLineWidth(0.3);
-    doc.roundedRect(x, y, wC, 15, 1.5, 1.5, 'FD');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+    doc.roundedRect(x, y, wC, 13.5, 1.5, 1.5, 'FD');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(14.5);
     doc.setTextColor(alerta ? COR.atr : (rot === 'Concluídas' ? COR.ok : COR.marrom));
-    doc.text(String(v), x + wC / 2, y + 8, { align: 'center' });
+    doc.text(String(v), x + wC / 2, y + 7.4, { align: 'center' });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(COR.cinza);
-    doc.text(rot, x + wC / 2, y + 12.5, { align: 'center' });
+    doc.text(rot, x + wC / 2, y + 11.4, { align: 'center' });
   });
-  y += 21;
+  y += 18.5;
 
   const secao = (txt) => {
-    if (y > A - 40) { doc.addPage(); y = 14; }
+    if (y > A - 34) { doc.addPage(); y = 11; }
     doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5); doc.setTextColor(COR.marrom);
     doc.text(txt, M, y);
     doc.setDrawColor(COR.verde); doc.setLineWidth(0.4); doc.line(M, y + 1.5, L - M, y + 1.5);
     y += 4;
   };
 
+  const linhaGrupo = (faz, itens) => [{ content: `${faz}  ·  ${itens.length} atividade${itens.length > 1 ? 's' : ''}`,
+    colSpan: 10, styles: { fillColor: COR.marromClaro, textColor: COR.marrom, fontStyle: 'bold' } }];
+  const linhaTotal = (rot, itens) => [{ content: `${rot}: ${itens.length} atividade${itens.length === 1 ? '' : 's'}` +
+    `   ·   ${ind2(itens).concluido} concluída(s)   ·   ${ind2(itens).pct}% de cumprimento`, colSpan: 10,
+    styles: { fillColor: COR.verdeTotal, textColor: COR.marrom, fontStyle: 'bold' } }];
+  const linhaAtiv = a => [
+    br(a.data) + ' ' + diaSemana(a.data), 'S' + semanaDe(a.data),
+    nomeAtividade(a), rotuloPri(a),
+    q.nome('locais', a.local_id), q.nome('culturas', a.cultura_id), a.plantio || '',
+    q.nome('operadores', a.operador_id) || 'a definir', maqImpl(a), statusDe(a)
+  ];
+
+  /* Uma folha por fazenda (ou por operador) quando o botão está marcado. */
   const tabela = (lista) => {
-    const corpo = [], pri = [];
-    agrupar(lista, o.agrupar).forEach(([faz, itens]) => {
-      corpo.push([{ content: `${faz}  ·  ${itens.length} atividade${itens.length > 1 ? 's' : ''}`, colSpan: 9,
-                    styles: { fillColor: COR.marromClaro, textColor: COR.marrom, fontStyle: 'bold' } }]);
-      itens.forEach(a => { pri[corpo.length] = a.prioridade; corpo.push([
-        br(a.data) + ' ' + diaSemana(a.data), 'S' + semanaDe(a.data),
-        nomeAtividade(a) + (a.prioridade ? '\n' + nomePrioridade(a.prioridade).toUpperCase() : ''),
-        q.nome('locais', a.local_id), q.nome('culturas', a.cultura_id), a.plantio || '',
-        q.nome('operadores', a.operador_id) || 'a definir', maqImpl(a), statusDe(a)
-      ]); });
-    });
-    corpo.push([{ content: `Total: ${lista.length} atividade${lista.length === 1 ? '' : 's'}` +
-                  `   ·   ${ind2(lista).concluido} concluída(s)   ·   ${ind2(lista).pct}% de cumprimento`, colSpan: 9,
-                  styles: { fillColor: COR.verdeTotal, textColor: COR.marrom, fontStyle: 'bold' } }]);
+    const grupos = agrupar(lista, o.agrupar);
+    if (o.umaPorPagina && grupos.length > 1) {
+      grupos.forEach(([faz, itens], i) => {
+        if (i) { doc.addPage(); y = 11; }
+        desenhar([linhaGrupo(faz, itens), ...itens.map(linhaAtiv), linhaTotal('Total desta folha', itens)], faz);
+      });
+      return;
+    }
+    const corpo = [];
+    grupos.forEach(([faz, itens]) => { corpo.push(linhaGrupo(faz, itens)); itens.forEach(a => corpo.push(linhaAtiv(a))); });
+    corpo.push(linhaTotal('Total', lista));
+    desenhar(corpo);
+  };
+
+  /* `topo` só vem no modo uma folha por fazenda: repete o nome quando a
+     fazenda não cabe numa folha só, para ninguém receber página sem dono. */
+  const desenhar = (corpo, topo) => {
     doc.autoTable({
-      startY: y, margin: { left: M, right: M, bottom: 18, top: 14 },
-      head: [['Data', 'Sem.', 'Tarefa', 'Local', 'Cultura', 'Plantio', 'Operador', 'Máquina / implemento', 'Status']],
+      startY: y, margin: { left: M, right: M, bottom: 14, top: topo ? 15 : 10 },
+      didDrawPage: d => {
+        if (!topo || d.pageNumber === 1) return;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(COR.marrom);
+        doc.text(`${topo}  ·  continuação`, M, 10);
+        doc.setDrawColor(COR.verde); doc.setLineWidth(0.4); doc.line(M, 11.5, L - M, 11.5);
+      },
+      head: [['Data', 'Sem.', 'Tarefa', 'Prioridade', 'Local', 'Cultura', 'Plantio', 'Operador', 'Máquina / implemento', 'Status']],
       body: corpo,
       theme: 'grid',
+      rowPageBreak: 'avoid',        // nunca corta uma atividade no meio, entre folhas
       styles: { font: 'helvetica', fontSize: 8.5, textColor: COR.cinza, lineColor: COR.verdeLinha,
                 lineWidth: 0.2, cellPadding: 1.6, fillColor: COR.verdeClaro, valign: 'middle' },
       headStyles: { fillColor: COR.verde, textColor: COR.branco, fontStyle: 'bold', lineColor: COR.verde },
-      columnStyles: { 0: { cellWidth: 23 }, 1: { cellWidth: 10, halign: 'center' }, 2: { cellWidth: 42 },
-                      3: { cellWidth: 38 }, 4: { cellWidth: 26 }, 5: { cellWidth: 20 }, 6: { cellWidth: 34 },
-                      7: { cellWidth: 51 }, 8: { cellWidth: 29, halign: 'center' } },
+      /* as 10 larguras somam 281 mm = 297 − 2 × 8 de margem */
+      columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 12, halign: 'center' }, 2: { cellWidth: 42 },
+                      3: { cellWidth: 23, halign: 'center' }, 4: { cellWidth: 36 }, 5: { cellWidth: 24 },
+                      6: { cellWidth: 17 }, 7: { cellWidth: 34 }, 8: { cellWidth: 45 },
+                      9: { cellWidth: 26, halign: 'center' } },
       didParseCell: d => {
         if (d.section !== 'body' || d.cell.raw == null || typeof d.cell.raw === 'object') return;
-        if (d.column.index === 6 && d.cell.raw === 'a definir') { d.cell.styles.textColor = COR.cinzaClaro; return; }
-        if (d.column.index === 2 && pri[d.row.index]) {
-          const urg = pri[d.row.index] === 'urgente';
+        if (d.column.index === 7 && d.cell.raw === 'a definir') { d.cell.styles.textColor = COR.cinzaClaro; return; }
+        if (d.column.index === 3) {
+          const p = d.cell.raw;
+          if (p === 'Normal') { d.cell.styles.textColor = COR.cinzaClaro; return; }
+          const urg = p === 'Urgente';
           d.cell.styles.fillColor = urg ? '#F8D3CE' : '#FFF0B3';
           d.cell.styles.textColor = urg ? COR.atr : COR.marrom;
           d.cell.styles.fontStyle = 'bold';
           return;
         }
-        if (d.column.index !== 8) return;
+        if (d.column.index !== 9) return;
         const s = d.cell.raw;
         d.cell.styles.fontStyle = 'bold';
         if (s === 'Concluído') d.cell.styles.textColor = COR.ok;
@@ -296,7 +344,7 @@ async function montarPdf(o) {
                  `Participantes: ${o.reuniao.participantes || '—'}`];
     const texto = doc.splitTextToSize(o.reuniao.anotacoes || 'Sem anotações.', L - 2 * M - 6);
     const alt = 6 + cab.length * 5 + texto.length * 4.6;
-    if (y + alt > A - 20) { doc.addPage(); y = 14; }
+    if (y + alt > A - 16) { doc.addPage(); y = 11; }
     doc.setFillColor(COR.verdeClaro); doc.setDrawColor(COR.verdeLinha); doc.setLineWidth(0.3);
     doc.rect(M, y, L - 2 * M, alt, 'FD');
     let yy = y + 6;
@@ -308,14 +356,14 @@ async function montarPdf(o) {
 
   /* ---- pé de todas as folhas */
   const total = doc.getNumberOfPages();
-  const hLop = 7.5, wLop = hLop * lop.w / lop.h;
+  const hLop = 7, wLop = hLop * lop.w / lop.h;
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
-    const yLinha = A - 13;
+    const yLinha = A - 10;
     doc.setDrawColor(COR.verde); doc.setLineWidth(0.4); doc.line(M, yLinha, L - M, yLinha);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(COR.cinzaClaro);
-    doc.text(`SAKUMA Agronegócios · ${o.titulo} · emitido em ${emitidoTxt}`, M, A - 6.5);
-    doc.text(`Página ${p} de ${total}`, L / 2, A - 6.5, { align: 'center' });
+    doc.text(`SAKUMA Agronegócios · ${o.titulo} · emitido em ${emitidoTxt}`, M, A - 4.5);
+    doc.text(`Página ${p} de ${total}`, L / 2, A - 4.5, { align: 'center' });
     // LOP: símbolo e depois a frase, terminando na margem direita.
     // A frase fica na altura do meio das letras "LOP", que ocupam a parte de
     // baixo do desenho (de 52% a 93% da altura da imagem).
@@ -323,7 +371,7 @@ async function montarPdf(o) {
     const wFrase = doc.getTextWidth(FRASE_LOP);
     const xFrase = L - M - wFrase;
     const xLop = xFrase - 1.6 - wLop;
-    const yImg = A - 11.2;
+    const yImg = A - 8.6;
     doc.addImage(lop.url, lop.tipo, xLop, yImg, wLop, hLop);
     const meioLetras = yImg + hLop * 0.725;
     doc.text(FRASE_LOP, xFrase, meioLetras + 0.85);
