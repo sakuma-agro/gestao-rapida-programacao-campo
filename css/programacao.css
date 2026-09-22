@@ -286,3 +286,30 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 .rd-faixa b{color:var(--marrom)}
 .rd-faixa-alerta{background:var(--pendente);border-color:#EFD98F;border-left-color:var(--marrom)}
 .rd-faixa .btn{min-height:38px;padding:6px 14px;font-size:14px;margin-left:auto}
+
+/* ---------- assinatura LOP (rodapé e tela de início)
+   Símbolo da LOP como veio (img/lop-marca.png, sem alteração) e o texto
+   em letra de verdade, maior e nítida — antes vinha miúdo dentro da imagem. */
+.lop-ass{display:flex;align-items:center;gap:12px;color:#1B232B;--h:40px}
+.lop-ass img{height:var(--h);width:auto;display:block}
+.lop-div{width:2px;align-self:stretch;min-height:calc(var(--h) * .9);background:#1B232B;border-radius:1px}
+.lop-txt{display:flex;flex-direction:column;line-height:1.25;font-family:Arial,Helvetica,sans-serif}
+.lop-txt b{font-size:15px;letter-spacing:1.6px;font-weight:bold}
+.lop-txt span{font-size:12px;letter-spacing:1.3px;color:#3A4249}
+.rodape .lop-ass{--h:38px;opacity:.95}
+.mi-lop.lop-ass{--h:62px;gap:18px;margin:48px auto 0;justify-content:center;width:auto}
+.mi-lop .lop-txt b{font-size:22px;letter-spacing:2.2px}
+.mi-lop .lop-txt span{font-size:16px;letter-spacing:1.8px}
+@media (max-width:560px){
+  .rodape .lop-ass{--h:30px;gap:9px}
+  .rodape .lop-txt b{font-size:12.5px;letter-spacing:1.2px}
+  .rodape .lop-txt span{font-size:10px;letter-spacing:.9px}
+  .mi-lop.lop-ass{--h:46px;gap:12px}
+  .mi-lop .lop-txt b{font-size:16px;letter-spacing:1.5px}
+  .mi-lop .lop-txt span{font-size:12px;letter-spacing:1.1px}
+}
+/* anula as margens negativas feitas para a imagem antiga */
+.lop-ass.rodape-lop,.lop-ass.mi-lop{width:auto;margin-left:auto;margin-right:auto}
+/* o arquivo do símbolo tem um fundo quase branco: "multiply" o deixa sumir sobre o fundo da tela, sem mexer no arquivo */
+.lop-ass img{mix-blend-mode:multiply}
+.lop-txt{text-align:left}
