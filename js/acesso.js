@@ -12,13 +12,11 @@ const MODULOS = [
     ['painel', 'Painel anual'],
     ['lancar', 'Lançar atividade'],
     ['atividades', 'Atividades'],
+    ['reuniao', 'Reunião semanal'],
   ] },
   { id: 'diario', nome: 'Relatório Diário', telas: [
     ['diario', 'Lançar diário'],
     ['diarios', 'Histórico'],
-  ] },
-  { id: 'reuniao', nome: 'Reunião semanal', telas: [
-    ['reuniao', 'Reunião semanal'],
   ] },
   { id: 'relatorio', nome: 'Relatórios', telas: [
     ['relatorio', 'Relatório em PDF'],
