@@ -318,3 +318,24 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 .pc-atalhos .btn.secundario{background:#ECEDE8;color:var(--cinza);border:1px solid #D3D5CD;font-weight:bold}
 .pc-atalhos .btn.secundario:hover{background:#E1E3DC;border-color:#C2C5BB}
 .pc-atalhos .btn.secundario small{color:var(--cinza-claro);opacity:1}
+
+/* ---------- tela inicial: acesso rápido na lateral (modelo B) ---------- */
+.ini-lateral{display:flex;gap:24px;align-items:flex-start}
+.ini-lateral .marca-inicio{flex:1;min-height:calc(100vh - 190px)}
+.ql{width:96px;flex:none;display:flex;flex-direction:column;gap:10px}
+.ql-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;
+  border-radius:10px;background:var(--branco);border:1px solid var(--linha);color:var(--cinza);
+  font:inherit;font-size:11.5px;font-weight:bold;line-height:1.2;text-align:center;cursor:pointer;min-height:76px;justify-content:center}
+.ql-item svg{width:26px;height:26px;flex:none}
+.ql-item:hover{border-color:var(--verde-linha);background:var(--verde-claro)}
+.ql-item.prim{background:var(--verde);border-color:var(--verde);color:#fff}
+.ql-item.prim:hover{background:var(--verde-escuro)}
+.ql-num{position:absolute;top:6px;right:7px;min-width:18px;border-radius:99px;padding:1px 6px;font-size:10px;
+  background:#ECEDE8;color:var(--cinza)}
+.ql-num.alerta{background:var(--urgente);color:#fff}
+@media (max-width:700px){
+  .ini-lateral{flex-direction:column;gap:6px}
+  .ql{width:100%;flex-direction:row;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .ql-item{min-width:86px}
+  .ini-lateral .marca-inicio{min-height:0;padding-top:24px}
+}
