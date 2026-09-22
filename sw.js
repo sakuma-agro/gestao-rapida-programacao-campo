@@ -1,6 +1,6 @@
 /* Gestão Rápida · Programação Campo — service worker
    Cache-first nos arquivos do app. Mudar CACHE força a atualização. */
-const CACHE = 'gestao-rapida-programacao-v30';
+const CACHE = 'gestao-rapida-programacao-v31';
 
 const ARQUIVOS = [
   './', './index.html', './manifest.json',
@@ -10,7 +10,7 @@ const ARQUIVOS = [
   './js/relatorio.js', './js/cadastros.js', './js/pessoas.js', './js/ficha.js', './js/diario.js',
   './icons/gr-pc-192.v2.png', './icons/gr-pc-512.v2.png', './icons/gr-pc-180.v2.png', './icons/favicon-gr-pc.v2.ico',
   './img/sakuma-logo.png', './img/sakuma-marca-vertical.png', './img/lop-marca.png',
-  './img/lop-assinatura-laser-claro.png', './img/lop-assinatura-laser-escuro.png',
+  './img/whatsapp.png', './img/lop-assinatura-laser-claro.png', './img/lop-assinatura-laser-escuro.png',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js',
   'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
   'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',
