@@ -74,7 +74,9 @@ async function garantirCodigo(d) {
 
 TELAS.diario = el => {
   const editar = window.diarioEditando || null;
-  window.diarioEditando = null;
+  const novaVisita = !!window.diarioNovaVisita;          // abriu pelo "+ Visita"
+  const trazidas = window.diarioVisitasTrazidas || [];   // visitas digitadas antes de juntar
+  window.diarioEditando = null; window.diarioNovaVisita = false; window.diarioVisitasTrazidas = null;
   const d = editar ? JSON.parse(JSON.stringify(editar)) : {
     id: crypto.randomUUID(), data: hoje(),
     // o último agrônomo usado; no primeiro relatório, o padrão
@@ -83,7 +85,13 @@ TELAS.diario = el => {
     visitas: [visitaVazia()]
   };
   if (!d.visitas || !d.visitas.length) d.visitas = [visitaVazia()];
+  if (editar && trazidas.length) d.visitas.push(...trazidas);
+  else if (editar && novaVisita) {
+    const ult = d.visitas[d.visitas.length - 1];
+    d.visitas.push(Object.assign(visitaVazia(), { fazenda_id: ult ? ult.fazenda_id : '' }));
+  }
   const novo = !editar;
+  const rolarParaFim = !!(editar && (novaVisita || trazidas.length));
   const agronomos = [...new Set([d.agronomo, AGRONOMO_PADRAO,
     ...diariosVisiveis().map(x => x.agronomo)].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
@@ -102,6 +110,9 @@ TELAS.diario = el => {
         <div class="rd-codigo"><span>Código</span><b>${d.codigo ? esc(d.codigo) : 'automático ao salvar'}</b></div>
       </div>
     </div>
+    ${novo ? '' : `<div class="rd-faixa">Editando o relatório <b>${esc(d.codigo || 'aguardando envio')}</b> de ${br(d.data)} —
+      corrija o que precisar ou acrescente visitas no fim. ${d.visitas.length} visita${d.visitas.length > 1 ? 's' : ''}.</div>`}
+    <div id="rd-existe"></div>
     <div id="rd-visitas"></div>
     <button type="button" class="btn neutro rd-mais" id="rd-mais">+ Adicionar outra visita</button>
     <div class="acoes">
@@ -216,6 +227,27 @@ TELAS.diario = el => {
   };
   if (!novo) el.querySelector('#rd-voltar').onclick = () => irPara('diarios');
 
+  /* Lançamento novo numa data que já tem relatório: oferece juntar tudo no
+     mesmo relatório, levando as visitas que já foram digitadas aqui. */
+  function conferirData() {
+    const alvo = el.querySelector('#rd-existe');
+    if (!novo) return;
+    const dt = el.querySelector('#rd-data').value;
+    const ja = diariosVisiveis().filter(x => x.data === dt && x.id !== d.id);
+    alvo.innerHTML = ja.map(x => `<div class="rd-faixa rd-faixa-alerta">
+      Já existe o relatório <b>${esc(x.codigo || 'aguardando envio')}</b> em ${br(dt)} (${esc(x.agronomo || '')},
+      ${(x.visitas || []).length} visita${(x.visitas || []).length > 1 ? 's' : ''}).
+      <button type="button" class="btn secundario" data-juntar="${x.id}">Acrescentar visitas nele</button></div>`).join('');
+    alvo.querySelectorAll('[data-juntar]').forEach(b => b.onclick = () => {
+      const preenchidas = d.visitas.filter(v => v.local_id || (v.informacoes || '').trim() || v.fotos.length);
+      window.diarioEditando = q.por_id('diarios', b.dataset.juntar);
+      if (preenchidas.length) window.diarioVisitasTrazidas = preenchidas; else window.diarioNovaVisita = true;
+      irPara('diario');
+    });
+  }
+  el.querySelector('#rd-data').addEventListener('change', conferirData);
+  conferirData();
+
   async function salvar() {
     d.data = el.querySelector('#rd-data').value;
     d.agronomo = el.querySelector('#rd-agronomo').value.trim().replace(/\s+/g, ' ');
@@ -253,6 +285,7 @@ TELAS.diario = el => {
   };
 
   desenhar();
+  if (rolarParaFim) setTimeout(() => caixa.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
 };
 
 /* locais só da fazenda escolhida (sem fazenda: todos, agrupados) */
@@ -276,7 +309,7 @@ TELAS.diarios = el => {
 
   el.innerHTML = `
     <h1>Histórico do Relatório Diário</h1>
-    <p class="sub">Todos os relatórios lançados, com o código de cada um. Toque em <strong>Abrir</strong> para ver ou corrigir,
+    <p class="sub">Todos os relatórios lançados, com o código de cada um. Toque em <strong>Editar</strong> para corrigir, em <strong>+ Visita</strong> para acrescentar uma visita no mesmo relatório,
       ou em <strong>PDF / WhatsApp</strong> para enviar.</p>
     <div class="filtros pc-filtros">
       <label>De <input type="date" data-f="de" value="${esc(f.de)}"></label>
@@ -327,7 +360,8 @@ TELAS.diarios = el => {
             <span class="pc-cor" style="background:${esc(corCultura(v.cultura_id))}"></span>${esc(q.nome('culturas', v.cultura_id))}${v.plantio ? ` · ${esc(v.plantio)}` : ''}</div>`).join('')}</td>
           <td class="ce">${fotos || '—'}</td>
           <td class="rd-acoes">
-            <button type="button" class="btn neutro" data-abrir="${d.id}">Abrir</button>
+            <button type="button" class="btn neutro" data-abrir="${d.id}">Editar</button>
+            <button type="button" class="btn" data-visita="${d.id}">+ Visita</button>
             <button type="button" class="btn secundario" data-pdf="${d.id}">PDF / WhatsApp</button>
             <button type="button" class="btn neutro pc-excluir" data-exc="${d.id}">Excluir</button>
           </td></tr>`;
@@ -337,6 +371,11 @@ TELAS.diarios = el => {
 
     el.querySelectorAll('[data-abrir]').forEach(b => b.onclick = () => {
       window.diarioEditando = q.por_id('diarios', b.dataset.abrir);
+      irPara('diario');
+    });
+    el.querySelectorAll('[data-visita]').forEach(b => b.onclick = () => {
+      window.diarioEditando = q.por_id('diarios', b.dataset.visita);
+      window.diarioNovaVisita = true;
       irPara('diario');
     });
     el.querySelectorAll('[data-pdf]').forEach(b => b.onclick = () => abrirPdfDiario(q.por_id('diarios', b.dataset.pdf)));
