@@ -353,7 +353,7 @@ TELAS.atividades = el => {
     alvo.innerHTML = `<div class="rolagem"><table class="tabela pc-grade">
       <thead><tr><th class="ce"><input type="checkbox" id="at-todas" aria-label="Marcar todas"></th>
         <th>Data</th><th>Semana</th><th>Atividade</th><th>Local</th><th>Cultura</th><th>Plantio</th>
-        <th>Operador</th><th>Máquina / implemento</th><th class="num">Horas</th><th>Status</th></tr></thead>
+        <th>Operador</th><th>Máquina / implemento</th><th class="num">Horas</th><th>Status</th><th class="ce">Ação</th></tr></thead>
       <tbody>${lista.map(a => `<tr data-id="${a.id}" class="${STATUS_CLASSE[statusDe(a)]}">
         <td class="ce"><input type="checkbox" class="at-cx" value="${a.id}"></td>
         <td>${br(a.data)}<br><small>${esc(diaSemana(a.data))}</small></td>
@@ -365,13 +365,30 @@ TELAS.atividades = el => {
         <td>${esc(q.nome('operadores', a.operador_id)) || '<span class="pc-falta">a definir</span>'}</td>
         <td>${esc(maqImpl(a))}</td>
         <td class="num">${fmtNum(a.horas_realizadas ?? a.horas_previstas)}</td>
-        <td>${etqStatus(a)}</td></tr>`).join('')}</tbody>
+        <td>${etqStatus(a)}</td>
+        <td class="ce">${pendente(statusDe(a))
+          ? `<button type="button" class="at-ok" data-ok="${a.id}" title="Marcar como concluída">✓ Concluir</button>`
+          : statusDe(a) === 'Concluído'
+            ? `<button type="button" class="at-reabrir" data-reabrir="${a.id}" title="Voltar para planejado">Reabrir</button>` : ''}</td></tr>`).join('')}</tbody>
       <tfoot><tr class="pc-total"><td></td><td colspan="8">Total: ${lista.length} atividade${lista.length > 1 ? 's' : ''}</td>
-        <td class="num">${fmtNum(horas)}</td><td></td></tr></tfoot>
+        <td class="num">${fmtNum(horas)}</td><td></td><td></td></tr></tfoot>
     </table></div>`;
     alvo.querySelectorAll('tbody tr').forEach(tr => tr.onclick = e => {
-      if (e.target.closest('input')) return;
+      if (e.target.closest('input,button')) return;
       abrirAtividade(tr.dataset.id, desenhar);
+    });
+    // concluir com um toque, direto da lista (sem abrir a atividade)
+    alvo.querySelectorAll('[data-ok]').forEach(b => b.onclick = async () => {
+      const a = q.por_id('atividades', b.dataset.ok);
+      if (!a) return;
+      b.disabled = true;
+      await gravarAtividade(Object.assign({}, a, { status: 'Concluído', motivo: null }));
+      aviso(`${nomeAtividade(a)} · ${q.nome('locais', a.local_id)}: concluída.`);
+      desenhar();
+    });
+    alvo.querySelectorAll('[data-reabrir]').forEach(b => b.onclick = async () => {
+      const a = q.por_id('atividades', b.dataset.reabrir);
+      if (a && await acaoRapida(a, 'reabrir')) desenhar();
     });
     alvo.querySelectorAll('.at-cx').forEach(cx => cx.onchange = () => {
       cx.checked ? sel.add(cx.value) : sel.delete(cx.value); pintarSel();
