@@ -14,7 +14,7 @@ const BUCKET_DIARIO = 'programacao-diario';
 const MAX_INFO = 2000;
 const MAX_FOTOS = 8;
 const AGRONOMO_PADRAO = 'Matheus Cassiano';
-const CARGO_AGRONOMO = 'Eng. Agrônomo';
+const CARGO_AGRONOMO = 'Engenheiro Agrônomo';
 
 /* ---------------------------------------------------------------- fotos */
 
@@ -591,21 +591,7 @@ async function montarPdfDiario(d) {
   }
   }
 
-  /* ---- agrônomo: só o nome em negrito e o cargo, sem linha de assinatura */
-  if (y > BAIXO - 14) novaFolha();
-  y += 6;
-  doc.setFontSize(10.5);
-  doc.setFont('helvetica', 'bold');
-  const nomeAg = d.agronomo || '';
-  const wNome = doc.getTextWidth(nomeAg);
-  doc.setFont('helvetica', 'normal');
-  const cargo = ' - ' + CARGO_AGRONOMO;
-  const wCargo = doc.getTextWidth(cargo);
-  const x0 = (L - wNome - wCargo) / 2;
-  doc.setFont('helvetica', 'bold'); doc.setTextColor(COR.marrom);
-  doc.text(nomeAg, x0, y);
-  doc.setFont('helvetica', 'normal'); doc.setTextColor(COR.cinza);
-  doc.text(cargo, x0 + wNome, y);
+  /* sem assinatura no fim: o agrônomo já aparece no quadro do topo */
 
   /* ---- pé de todas as folhas */
   const total = doc.getNumberOfPages();
