@@ -339,3 +339,11 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
   .ql-item{min-width:86px}
   .ini-lateral .marca-inicio{min-height:0;padding-top:24px}
 }
+
+/* concluir direto da lista de atividades */
+.at-ok{border:1px solid var(--ok);background:var(--branco);color:var(--ok);font:inherit;font-size:13px;font-weight:bold;
+  border-radius:99px;padding:6px 12px;cursor:pointer;white-space:nowrap;min-height:34px}
+.at-ok:hover{background:var(--ok);color:#fff}
+.at-reabrir{border:1px solid var(--linha);background:var(--branco);color:var(--cinza-claro);font:inherit;font-size:12px;
+  border-radius:99px;padding:4px 10px;cursor:pointer;white-space:nowrap}
+.at-reabrir:hover{color:var(--cinza);border-color:var(--cinza-claro)}
