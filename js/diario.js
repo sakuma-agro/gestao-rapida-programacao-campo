@@ -50,6 +50,22 @@ const dataLonga = iso => {
 };
 const nomeArquivoDiario = d =>
   `Relatorio_Diario_${br(d.data).replace(/\//g, '-')}` + (d.codigo ? `_${d.codigo}` : '');
+/* Mensagem que acompanha o PDF no WhatsApp. O texto fica em programacao.parametros
+   (chave diario_msg_whatsapp) e é editado em Relatório Diário → Configurações.
+   Marcadores: {data} {codigo} {agronomo} {fazendas} {registros} */
+const CHAVE_MSG = 'diario_msg_whatsapp';
+const MSG_PADRAO = 'Segue em anexo o relatório diário ({data})';
+const modeloMensagem = () => ((q.todos('parametros').find(p => p.chave === CHAVE_MSG) || {}).valor || '').trim() || MSG_PADRAO;
+function textoMensagem(d, modelo = modeloMensagem()) {
+  const fazendas = gruposPorFazenda(d).map(g => g.nome).join(', ');
+  return modelo
+    .replace(/\{data\}/gi, br(d.data))
+    .replace(/\{codigo\}/gi, d.codigo || '')
+    .replace(/\{agronomo\}/gi, d.agronomo || '')
+    .replace(/\{fazendas\}/gi, fazendas)
+    .replace(/\{registros\}/gi, String((d.visitas || []).length));
+}
+
 const mensagemDiario = d => {
   const linhas = [`*Relatório Diário (${br(d.data)})*`, 'SAKUMA Agronegócios'];
   if (d.codigo) linhas.push('Código: ' + d.codigo);
@@ -644,7 +660,7 @@ async function abrirPdfDiario(d) {
   const nome = nomeArquivoDiario(d).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '_') + '.pdf';
   const blob = doc.output('blob');
   const url = URL.createObjectURL(blob);
-  const msg = mensagemDiario(d).replace(/Arquivo: .*$/, 'Arquivo: ' + nome);
+  const msg = textoMensagem(d);
 
   abrirModal('Relatório Diário pronto', `
     <p class="sub"><strong>${esc(nome)}</strong><br>${esc(d.codigo || 'Código sai quando o registro subir (sem internet agora)')}
@@ -664,7 +680,7 @@ async function abrirPdfDiario(d) {
       const arq = new File([blob], nome, { type: 'application/pdf' });
       // celular: compartilha o PDF com a mensagem (escolher o WhatsApp na lista)
       if (navigator.canShare && navigator.canShare({ files: [arq] })) {
-        try { await navigator.share({ files: [arq], title: `Relatório Diário (${br(d.data)})`, text: msg.replace(/\*/g, '') }); return; }
+        try { await navigator.share({ files: [arq], title: `Relatório Diário (${br(d.data)})`, text: msg }); return; }
         catch (e) { if (e.name === 'AbortError') return; }
       }
       // computador: baixa o PDF e abre o WhatsApp com a mensagem para anexar
@@ -674,5 +690,41 @@ async function abrirPdfDiario(d) {
     };
   });
 }
+
+/* ---------------------------------------------------------------- configurações do diário */
+
+TELAS['diario-config'] = el => {
+  const atual = modeloMensagem();
+  const exemplo = { data: hoje(), codigo: 'RD-2026-0001', agronomo: AGRONOMO_PADRAO,
+    visitas: [{ fazenda_id: (fazendasOrdenadas()[0] || {}).id }] };
+  el.innerHTML = `
+    <h1>Configurações do Relatório Diário</h1>
+    <p class="sub">Mensagem que vai junto com o PDF quando o relatório é enviado pelo WhatsApp. Vale para todos os aparelhos.</p>
+    <div class="pc-cartao rd-cfg">
+      <div class="campo"><label for="cfg-msg">Mensagem do WhatsApp</label>
+        <textarea id="cfg-msg" rows="3" maxlength="500">${esc(atual)}</textarea>
+        <p class="ajuda">Use os marcadores para o app completar sozinho:
+          <code>{data}</code> data do relatório · <code>{codigo}</code> código RD ·
+          <code>{agronomo}</code> nome do agrônomo · <code>{fazendas}</code> fazendas visitadas ·
+          <code>{registros}</code> número de registros</p></div>
+      <p class="rd-cfg-rot">Como vai sair:</p>
+      <div class="rd-cfg-previa" id="cfg-previa"></div>
+      <div class="acoes">
+        <button type="button" class="btn" id="cfg-salvar">Salvar</button>
+        <button type="button" class="btn neutro" id="cfg-padrao">Voltar ao padrão</button>
+      </div>
+    </div>`;
+  const txt = el.querySelector('#cfg-msg');
+  const previa = () => { el.querySelector('#cfg-previa').textContent = textoMensagem(exemplo, txt.value.trim() || MSG_PADRAO); };
+  txt.oninput = previa; previa();
+  el.querySelector('#cfg-padrao').onclick = () => { txt.value = MSG_PADRAO; previa(); };
+  el.querySelector('#cfg-salvar').onclick = async () => {
+    const valor = txt.value.trim() || MSG_PADRAO;
+    await gravar('parametros', { chave: CHAVE_MSG, valor, atualizado_em: new Date().toISOString(),
+                                 atualizado_por: App.usuario ? App.usuario.id : null });
+    txt.value = valor; previa();
+    aviso(App.online ? 'Mensagem salva.' : 'Mensagem salva no aparelho. Sobe quando a internet voltar.');
+  };
+};
 
 Object.assign(window, { abrirPdfDiario, montarPdfDiario });

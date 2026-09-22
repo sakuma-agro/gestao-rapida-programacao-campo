@@ -20,7 +20,7 @@ const TABELAS_BASE = [
   'fazendas', 'culturas', 'locais', 'tipos_atividade', 'operadores',
   'maquinas', 'implementos', 'usuario_fazendas',
   // o que muda toda semana: vem sempre de novo quando há internet
-  'atividades', 'reunioes', 'diarios'
+  'atividades', 'reunioes', 'diarios', 'parametros'
 ];
 
 /* Colunas que o BANCO gera (identity ALWAYS). Nunca vão no envio: o Postgres
@@ -70,7 +70,7 @@ function promessa(req) {
 }
 
 /* A tabela parametros tem "chave" como identificador, não "id". */
-const CHAVE_PK = {};
+const CHAVE_PK = { parametros: 'chave' };
 
 /* Tabelas de ligação não têm id próprio: a chave é o par de ids. Sem isto o
    IndexedDB recusa a linha inteira ("key path yielded a value that is not a

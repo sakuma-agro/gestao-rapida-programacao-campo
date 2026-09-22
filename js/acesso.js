@@ -17,6 +17,7 @@ const MODULOS = [
   { id: 'diario', nome: 'Relatório Diário', telas: [
     ['diario', 'Lançar diário'],
     ['diarios', 'Histórico'],
+    ['diario-config', 'Configurações'],
   ] },
   { id: 'relatorio', nome: 'Relatórios', telas: [
     ['relatorio', 'Relatório em PDF'],
@@ -31,6 +32,7 @@ const MODULOS = [
 const Acesso = { admin: false, carregado: false };
 
 const soAdmin = new Set(MODULOS.filter(m => m.admin).flatMap(m => m.telas.map(([t]) => t)));
+soAdmin.add('diario-config');   // a mensagem padrão vale para todos: só administrador muda
 const moduloDe = tela => MODULOS.find(m => m.telas.some(([t]) => t === tela))?.id || null;
 
 function podeTela(tela) {
