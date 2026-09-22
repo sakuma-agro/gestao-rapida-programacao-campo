@@ -131,8 +131,10 @@ TELAS.marca = el => {
         ${atrasadas.length ? `<button type="button" class="btn pc-alerta" data-ir="atividades" data-filtro="Atrasado">
           ${atrasadas.length} atrasada${atrasadas.length > 1 ? 's' : ''}</button>` : ''}
       </div>
-      <img class="mi-lop" src="img/lop-assinatura-laser-escuro.png"
-           alt="Desenvolvido por LOP — Inteligência para o agronegócio">
+      <div class="lop-ass mi-lop" role="img" aria-label="Desenvolvido por LOP — Inteligência para o agronegócio">
+    <img src="img/lop-marca.png" alt=""><span class="lop-div"></span>
+    <span class="lop-txt"><b>DESENVOLVIDO POR LOP</b><span>INTELIGÊNCIA PARA O AGRONEGÓCIO</span></span>
+  </div>
     </section>`;
   el.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => {
     if (b.dataset.filtro) window.filtroInicialAtividades = { status: b.dataset.filtro };
