@@ -413,6 +413,15 @@ TELAS.diarios = el => {
 
 /* ---------------------------------------------------------------- PDF */
 
+/* letra branca em fundo escuro, cinza SAKUMA em fundo claro */
+function corTextoSobre(hex) {
+  const h = String(hex).replace('#', '');
+  const [r, g, b] = [0, 2, 4].map(k => parseInt(h.substr(k, 2), 16) / 255)
+    .map(c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.35 ? '#51534A' : '#FFFFFF';
+}
+
 async function dadosImagem(blob) {
   const url = await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); });
   const dim = await new Promise(ok => { const i = new Image(); i.onload = () => ok({ w: i.naturalWidth, h: i.naturalHeight }); i.onerror = () => ok(null); i.src = url; });
@@ -435,18 +444,14 @@ async function montarPdfDiario(d) {
   doc.addImage(sakuma.url, sakuma.tipo, M, 8, wLogo, hLogo);
   const xT = M + wLogo + 5;
   doc.setTextColor(COR.marrom); doc.setFont('helvetica', 'bold'); doc.setFontSize(17);
-  doc.text('Relatório Diário', xT, 14);
+  // título centralizado na folha
+  doc.text('Relatório Diário', L / 2, 14, { align: 'center' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(COR.cinza);
-  doc.text('Registro das atividades de campo', xT, 19.3);
-  // código e data à direita
-  doc.setFillColor(COR.verdeClaro); doc.setDrawColor(COR.verdeLinha); doc.setLineWidth(0.3);
-  doc.roundedRect(L - M - 52, 7.5, 52, 16, 1.5, 1.5, 'FD');
-  doc.setFontSize(7.5); doc.setTextColor(COR.cinzaClaro);
-  doc.text('CÓDIGO', L - M - 26, 11.6, { align: 'center' });
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(12.5); doc.setTextColor(d.codigo ? COR.marrom : COR.cinzaClaro);
-  doc.text(cod, L - M - 26, 17, { align: 'center' });
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(COR.cinza);
-  doc.text(br(d.data), L - M - 26, 21.4, { align: 'center' });
+  doc.text('Registro das atividades de campo', L / 2, 19.3, { align: 'center' });
+  // código e data à direita, discretos: sem quadro, letra pequena e cinza
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(COR.cinzaClaro);
+  doc.text('Código ' + cod, L - M, 14, { align: 'right' });
+  doc.text(br(d.data), L - M, 18.3, { align: 'right' });
   doc.setDrawColor(COR.verde); doc.setLineWidth(0.9);
   doc.line(M, 27, L - M, 27);
 
@@ -481,33 +486,44 @@ async function montarPdfDiario(d) {
     doc.text(`${g.visitas.length} registro${g.visitas.length > 1 ? 's' : ''}`, L - M - 3.5, y + 6.6, { align: 'right' });
     y += 13;
 
-  for (const v of g.visitas) {
+  for (const [pos, v] of g.visitas.entries()) {
     i++;
     if (y > BAIXO - 40) novaFolha();
-    // faixa da visita: número + fazenda em destaque + local
+    // linha 1: "1. Registro · Lote 35 PADAP - Pivot 2 - Lote 35" (fazenda e local em destaque)
     doc.setFillColor(COR.verdeTotal); doc.setDrawColor(COR.verdeLinha); doc.setLineWidth(0.3);
     doc.rect(M, y, W, 8, 'FD');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(COR.cinza);
-    const rot = `${i + 1}. Registro  ·  `;
-    doc.text(rot, M + 2.5, y + 5.4);
-    const wRot = doc.getTextWidth(rot);
-    doc.setFontSize(11.5); doc.setTextColor(COR.marrom);
-    doc.text(g.nome, M + 2.5 + wRot, y + 5.4);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(COR.cinza);
-    doc.text(q.nome('locais', v.local_id), L - M - 2.5, y + 5.4, { align: 'right' });
+    let x = M + 2.5;
+    const escreve = (txt, estilo, tam, cor) => {
+      doc.setFont('helvetica', estilo); doc.setFontSize(tam); doc.setTextColor(cor);
+      doc.text(txt, x, y + 5.4); x += doc.getTextWidth(txt);
+    };
+    escreve(`${i + 1}. Registro  ·  `, 'bold', 10.5, COR.cinza);
+    escreve(g.nome, 'bold', 11.5, COR.marrom);
+    escreve('  -  ', 'normal', 11, COR.cinza);
+    escreve(q.nome('locais', v.local_id), 'bold', 11, COR.marrom);
     y += 8;
-
-    doc.autoTable({
-      startY: y, margin: { left: M, right: M },
-      theme: 'grid',
-      head: [['Fazenda', 'Local / Talhão', 'Plantio', 'Cultura']],
-      body: [[{ content: q.nome('fazendas', v.fazenda_id), styles: { fontStyle: 'bold', textColor: COR.marrom } },
-              q.nome('locais', v.local_id), v.plantio || '—', q.nome('culturas', v.cultura_id)]],
-      styles: { font: 'helvetica', fontSize: 9, textColor: COR.cinza, lineColor: COR.verdeLinha, lineWidth: 0.2,
-                cellPadding: 1.8, fillColor: COR.branco },
-      headStyles: { fillColor: COR.verdeClaro, textColor: COR.marrom, fontStyle: 'bold', lineColor: COR.verdeLinha },
-    });
-    y = doc.lastAutoTable.finalY + 4;
+    // linha 2: "Cultura: Cenoura  -  Plantio: PL 27" (plantio só quando houver)
+    doc.setFillColor(COR.branco);
+    doc.rect(M, y, W, 7, 'FD');
+    x = M + 2.5;
+    const esc2 = (txt, estilo) => {
+      doc.setFont('helvetica', estilo); doc.setFontSize(9.5); doc.setTextColor(estilo === 'bold' ? COR.marrom : COR.cinza);
+      doc.text(txt, x, y + 4.8); x += doc.getTextWidth(txt);
+    };
+    esc2('Cultura: ', 'normal');
+    // etiqueta com a cor da cultura (a mesma do cadastro e do painel)
+    const nomeC = q.nome('culturas', v.cultura_id) || '—';
+    const cor = (q.por_id('culturas', v.cultura_id) || {}).cor;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+    const wC = doc.getTextWidth(nomeC) + 5;
+    if (cor) {
+      doc.setFillColor(cor);
+      doc.roundedRect(x, y + 1.2, wC, 4.8, 1.2, 1.2, 'F');
+      doc.setTextColor(corTextoSobre(cor));
+    } else doc.setTextColor(COR.marrom);
+    doc.text(nomeC, x + 2.5, y + 4.8); x += wC;
+    if (v.plantio) { esc2('   -   Plantio: ', 'normal'); esc2(v.plantio, 'bold'); }
+    y += 7 + 4;
 
     // informações
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(COR.marrom);
@@ -555,7 +571,17 @@ async function montarPdfDiario(d) {
       });
       y += hF + 6;
     }
-    y += 2;
+    // linha pontilhada separando um registro do próximo da mesma fazenda
+    if (pos < g.visitas.length - 1) {
+      if (y > BAIXO - 6) novaFolha();
+      else {
+        doc.setDrawColor(COR.cinzaClaro); doc.setLineWidth(0.4);
+        doc.setLineDashPattern([1.2, 1.2], 0);
+        doc.line(M, y + 1, L - M, y + 1);
+        doc.setLineDashPattern([], 0);
+        y += 7;
+      }
+    } else y += 2;
   }
   }
 
