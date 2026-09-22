@@ -13,6 +13,10 @@ const MODULOS = [
     ['lancar', 'Lançar atividade'],
     ['atividades', 'Atividades'],
   ] },
+  { id: 'diario', nome: 'Relatório Diário', telas: [
+    ['diario', 'Lançar diário'],
+    ['diarios', 'Histórico'],
+  ] },
   { id: 'reuniao', nome: 'Reunião semanal', telas: [
     ['reuniao', 'Reunião semanal'],
   ] },
@@ -120,6 +124,7 @@ TELAS.marca = el => {
       <p class="mi-dica">Hoje é ${esc(diaSemana(hoje()))}, ${br(hoje())} — <strong>${esc(rotuloSemana(s))}</strong>.</p>
       <div class="pc-atalhos">
         <button type="button" class="btn" data-ir="lancar">Lançar atividade</button>
+        <button type="button" class="btn secundario" data-ir="diario">Relatório diário</button>
         <button type="button" class="btn secundario" data-ir="painel">Painel anual</button>
         <button type="button" class="btn secundario" data-ir="reuniao">Reunião semanal
           <small>${daSemana.length} nesta semana</small></button>

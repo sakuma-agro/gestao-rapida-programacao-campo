@@ -20,13 +20,14 @@ const TABELAS_BASE = [
   'fazendas', 'culturas', 'locais', 'tipos_atividade', 'operadores',
   'maquinas', 'implementos', 'usuario_fazendas',
   // o que muda toda semana: vem sempre de novo quando há internet
-  'atividades', 'reunioes'
+  'atividades', 'reunioes', 'diarios'
 ];
 
 /* Colunas que o BANCO gera (identity ALWAYS). Nunca vão no envio: o Postgres
    recusa INSERT/UPSERT com valor nelas. Depois do OK o app lê o número de volta. */
 const GERADAS_NO_BANCO = {
-  atividades: ['ano', 'mes', 'semana']
+  atividades: ['ano', 'mes', 'semana'],
+  diarios: ['codigo']      // RD-AAAA-0001, dado pelo banco
 };
 
 /* ---------------------------------------------------------------- IndexedDB */
