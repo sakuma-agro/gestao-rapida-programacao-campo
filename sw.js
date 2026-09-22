@@ -1,6 +1,6 @@
 /* Gestão Rápida · Programação Campo — service worker
    Cache-first nos arquivos do app. Mudar CACHE força a atualização. */
-const CACHE = 'gestao-rapida-programacao-v14';
+const CACHE = 'gestao-rapida-programacao-v15';
 
 const ARQUIVOS = [
   './', './index.html', './manifest.json',
