@@ -281,3 +281,8 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
   .rd-foto{width:calc(50% - 6px);height:130px}
   .rd-vis-lin{white-space:normal}
 }
+.rd-faixa{background:var(--verde-claro);border:1px solid var(--verde-linha);border-left:4px solid var(--verde);
+  border-radius:var(--raio);padding:10px 14px;margin:0 0 14px;font-size:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.rd-faixa b{color:var(--marrom)}
+.rd-faixa-alerta{background:var(--pendente);border-color:#EFD98F;border-left-color:var(--marrom)}
+.rd-faixa .btn{min-height:38px;padding:6px 14px;font-size:14px;margin-left:auto}
