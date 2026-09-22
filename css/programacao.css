@@ -225,3 +225,59 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 .pc-rlista li.pri-urgente{border-left-color:#D93A2B;background:#FDF0EE}
 .pc-rlista li.pri-importante{border-left-color:#F5C400;background:#FFFBEA}
 .pc-rlista li.pri-urgente.st-ok,.pc-rlista li.pri-importante.st-ok{background:var(--verde-claro)}
+
+/* ---------- Relatório Diário ---------- */
+.rd-topo{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.rd-titulo{display:flex;align-items:center;gap:12px}
+.rd-titulo h1{margin:0;color:var(--cinza);font-size:26px}
+.rd-titulo .sub{margin:2px 0 0}
+.rd-icone{width:52px;height:60px;border-radius:8px;background:var(--verde);display:flex;align-items:center;justify-content:center;flex:none}
+.rd-icone svg{width:34px;height:34px}
+.rd-cab{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.rd-cab .campo{margin:0;min-width:170px}
+.rd-cab #rd-agronomo{min-width:230px}
+.rd-codigo{display:flex;flex-direction:column;justify-content:center;background:var(--verde-claro);border:1px solid var(--verde-linha);
+  border-radius:var(--raio);padding:4px 14px;min-height:48px}
+.rd-codigo span{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--cinza-claro)}
+.rd-codigo b{color:var(--marrom);font-size:16px}
+.rd-visita{background:var(--branco);border:1px solid var(--linha);border-radius:10px;margin:0 0 16px;overflow:hidden;
+  box-shadow:0 1px 3px rgba(81,83,74,.08)}
+.rd-visita header{display:flex;justify-content:space-between;align-items:center;background:#DDEBD3;padding:10px 16px}
+.rd-visita h2{margin:0;font-size:17px;color:var(--cinza)}
+.rd-remover{border:0;background:none;color:var(--cinza);font:inherit;font-size:14px;cursor:pointer;min-height:36px}
+.rd-remover:hover{color:var(--urgente)}
+.rd-corpo{padding:14px 16px 16px}
+.rd-grade{display:grid;grid-template-columns:repeat(4,1fr);gap:0 14px}
+.rd-corpo label,.rd-lbl{font-weight:bold;font-size:14px;color:var(--cinza)}
+.rd-lbl{display:block;margin-bottom:6px}
+.rd-corpo textarea{min-height:120px}
+.rd-conta{text-align:right}
+.rd-fotos{display:flex;gap:12px;flex-wrap:wrap}
+.rd-soltar{display:flex;align-items:center;gap:14px;width:340px;max-width:100%;min-height:150px;padding:14px 18px;
+  border:2px dashed #B8BAB2;border-radius:8px;background:#FAFBF8;cursor:pointer;font-weight:normal !important;font-size:14px}
+.rd-soltar.sobre,.rd-soltar:hover{border-color:var(--verde);background:var(--verde-claro)}
+.rd-soltar small{color:var(--cinza-claro)}
+.rd-cam svg{width:40px;height:40px;display:block}
+.rd-foto{position:relative;width:180px;height:150px;border-radius:8px;overflow:hidden;background:var(--verde-claro);border:1px solid var(--linha)}
+.rd-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.rd-foto.sem::after{content:'foto sem internet';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:var(--cinza-claro)}
+.rd-foto button{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;border:0;
+  background:rgba(81,83,74,.85);color:#fff;font-size:18px;line-height:1;cursor:pointer}
+.rd-mais{width:100%;border-style:dashed !important;color:var(--verde-escuro) !important;font-weight:bold}
+.rd-tab td{vertical-align:top}
+.rd-tab tbody tr{cursor:default}
+.rd-vis-lin{white-space:nowrap}
+.rd-vis-lin + .rd-vis-lin{margin-top:3px}
+.rd-acoes{white-space:nowrap}
+.rd-acoes .btn{min-height:38px;padding:6px 12px;font-size:14px;margin:2px 0}
+.btn.rd-zap{background:#25A244}
+.btn.rd-zap:hover{background:#1E8A39}
+@media (max-width:900px){ .rd-grade{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:640px){
+  .rd-grade{grid-template-columns:1fr}
+  .rd-cab,.rd-cab .campo,.rd-cab #rd-agronomo{width:100%}
+  .rd-soltar{width:100%;min-height:110px}
+  .rd-foto{width:calc(50% - 6px);height:130px}
+  .rd-vis-lin{white-space:normal}
+}
