@@ -651,8 +651,8 @@ async function abrirPdfDiario(d) {
       · ${(d.visitas || []).length} visita(s)</p>
     <iframe class="pc-pdf" src="${url}" title="Prévia do relatório diário"></iframe>
     <div class="acoes">
-      <button type="button" class="btn rd-zap" id="rd-zap">Enviar pelo WhatsApp</button>
-      <a class="btn secundario" href="${url}" download="${esc(nome)}" id="rd-baixar">Baixar PDF</a>
+      <button type="button" class="btn btn-zap" id="rd-zap"><img class="ic-zap" src="img/whatsapp.png" alt="">Enviar pelo WhatsApp</button>
+      <a class="btn btn-pdf" href="${url}" download="${esc(nome)}" id="rd-baixar">Baixar PDF</a>
       <button type="button" class="btn neutro" id="rd-imp">Imprimir</button>
     </div>`, corpo => {
     corpo.querySelector('#rd-imp').onclick = () => {

@@ -399,9 +399,9 @@ async function gerarRelatorio(o) {
     <p class="sub"><strong>${esc(nome)}</strong><br>${esc(o.periodo)} · ${o.lista.length} atividade(s)</p>
     <iframe class="pc-pdf" src="${url}" title="Prévia do relatório"></iframe>
     <div class="acoes">
-      <a class="btn" href="${url}" download="${esc(nome)}" id="rl-baixar">Baixar PDF</a>
-      <button type="button" class="btn secundario" id="rl-zap">Enviar pelo WhatsApp</button>
-      <button type="button" class="btn secundario" id="rl-imp">Imprimir</button>
+      <button type="button" class="btn btn-zap" id="rl-zap"><img class="ic-zap" src="img/whatsapp.png" alt="">Enviar pelo WhatsApp</button>
+      <a class="btn btn-pdf" href="${url}" download="${esc(nome)}" id="rl-baixar">Baixar PDF</a>
+      <button type="button" class="btn neutro" id="rl-imp">Imprimir</button>
     </div>`, corpo => {
     corpo.querySelector('#rl-imp').onclick = () => {
       const fr = corpo.querySelector('.pc-pdf');
