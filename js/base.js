@@ -410,18 +410,58 @@ async function telaFila() {
   });
 }
 
-/* A sessão fica em `sessionStorage`, não em `localStorage`: ela morre quando a
-   janela do app fecha. Foi pedido — app fechado tem de voltar pedindo senha.
-   O preço é que reabrir SEM INTERNET não entra, porque a primeira entrada
-   precisa falar com o servidor. Onde sessionStorage não existir (janela
-   anônima, navegador travado), o login simplesmente não é guardado, que é o
-   lado seguro do erro. */
-function guardaDaSessao() {
+/* Entrada sem internet.
+   A sessão do Supabase fica guardada no aparelho (localStorage), para o app
+   abrir e trabalhar sem sinal. Mesmo assim, app fechado volta pedindo senha:
+   quem destrava a tela é a marca "gr.desbloqueado", que fica em
+   sessionStorage e morre quando a janela do app fecha.
+   Sem internet, a senha é conferida no próprio aparelho contra um resumo
+   (PBKDF2) guardado na última entrada com internet — a senha em si nunca é
+   guardada. A primeira entrada de cada pessoa num aparelho precisa de sinal. */
+function guardaPersistente() {
   try {
-    sessionStorage.setItem('gr.teste', '1');
-    sessionStorage.removeItem('gr.teste');
-    return sessionStorage;
+    localStorage.setItem('gr.teste', '1');
+    localStorage.removeItem('gr.teste');
+    return localStorage;
   } catch (e) { return undefined; }
+}
+const DESBLOQUEIO = 'gr.programacao.desbloqueado';
+function desbloquear() { try { sessionStorage.setItem(DESBLOQUEIO, '1'); } catch (e) {} }
+function estaDesbloqueado() { try { return sessionStorage.getItem(DESBLOQUEIO) === '1'; } catch (e) { return false; } }
+function travar() { try { sessionStorage.removeItem(DESBLOQUEIO); } catch (e) {} }
+
+async function resumoSenha(senha, sal) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(sal), iterations: 150000 }, base, 256);
+  return Array.from(new Uint8Array(bits)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+async function guardarCredencial(login, senha) {
+  try {
+    const sal = crypto.randomUUID();
+    await meta('credencial', { login: login.toLowerCase(), sal, resumo: await resumoSenha(senha, sal), em: new Date().toISOString() });
+  } catch (e) { console.warn('não guardou a senha para uso sem internet', e); }
+}
+async function conferirCredencial(login, senha) {
+  const c = await meta('credencial');
+  if (!c) return 'sem';
+  const u = (await meta('usuario')) || {};
+  const nomes = [c.login, u.email, u.usuario].filter(Boolean).map(x => String(x).toLowerCase());
+  if (!nomes.includes(login.toLowerCase())) return 'outro';
+  return (await resumoSenha(senha, c.sal)) === c.resumo ? 'ok' : 'senha';
+}
+
+/* O aparelho diz que tem rede mas o servidor não responde (sinal fraco).
+   Testa de minuto em minuto e, quando responder, age como se o sinal voltasse. */
+let vigiando = null;
+function vigiarSinal() {
+  if (vigiando) return;
+  vigiando = setInterval(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const r = await fetch(CONFIG.SUPABASE_URL + '/auth/v1/health', { headers: { apikey: CONFIG.SUPABASE_ANON_KEY }, cache: 'no-store' });
+      if (r.ok) { clearInterval(vigiando); vigiando = null; window.dispatchEvent(new Event('online')); }
+    } catch (e) { /* ainda sem sinal */ }
+  }, 60000);
 }
 
 /* ---------------------------------------------------------------- login */
@@ -519,6 +559,7 @@ function telaNovaSenha() {
     if (error) return aviso('Não deu para salvar: ' + error.message, true);
     history.replaceState(null, '', location.pathname);
     aviso('Senha alterada. Bem-vindo de volta.');
+    desbloquear();
     iniciarSessao();
   };
   $('#ns-2').onkeydown = e => { if (e.key === 'Enter') $('#ns-salvar').click(); };
@@ -531,18 +572,37 @@ function telaNovaSenha() {
 async function entrar() {
   const quem = $('#lg-email').value.trim(), senha = $('#lg-senha').value;
   if (!quem || !senha) return aviso('Preencha usuário e senha.', true);
-  if (!App.online) return aviso('A primeira entrada precisa de internet.', true);
   const b = $('#lg-entrar'); b.disabled = true; b.textContent = 'Entrando…';
+
+  // Sem internet: confere a senha no próprio aparelho.
+  const entrarSemRede = async () => {
+    if (App.online) { App.online = false; pintarEstado(); vigiarSinal(); }
+    let r = 'sem';
+    try { r = await conferirCredencial(quem, senha); } catch (e) { console.error(e); }
+    b.disabled = false; b.textContent = 'Entrar';
+    if (r === 'ok') { desbloquear(); return iniciarSessao(); }
+    return telaLogin({
+      sem: 'Sem internet. A primeira entrada neste aparelho precisa de sinal; depois ele entra sem internet.',
+      outro: 'Sem internet, só entra quem usou este aparelho por último com sinal.',
+      senha: 'Usuário ou senha não conferem.'
+    }[r]);
+  };
+  if (!App.online) return entrarSemRede();
+  // sinal fraco de fazenda: o aparelho diz que tem internet, mas o servidor não responde
+  const semRede = err => !!err && /FetchError|Failed to fetch|NetworkError|Failed to send|Load failed|timeout/i
+    .test((err.name || '') + ' ' + (err.message || ''));
 
   try {
     if (quem.includes('@')) {
       const { error } = await App.sb.auth.signInWithPassword({
         email: quem.toLowerCase(), password: senha });
+      if (semRede(error)) throw Object.assign(new Error('rede'), { rede: true });
       if (error) throw new Error('Usuário ou senha não conferem.');
     } else {
       const { data, error } = await App.sb.functions.invoke('entrar', {
         body: { usuario: quem.toLowerCase(), senha },
       });
+      if (semRede(error)) throw Object.assign(new Error('rede'), { rede: true });
       if (error || data?.erro) throw new Error(data?.erro || 'Usuário ou senha não conferem.');
       const { error: erroSessao } = await App.sb.auth.setSession({
         access_token: data.access_token, refresh_token: data.refresh_token,
@@ -550,29 +610,43 @@ async function entrar() {
       if (erroSessao) throw new Error('Entrei, mas não consegui abrir a sessão.');
     }
   } catch (e) {
+    if (e.rede || semRede(e)) return entrarSemRede();
     b.disabled = false; b.textContent = 'Entrar';
     return telaLogin(e.message || 'Usuário ou senha não conferem.');
   }
   b.disabled = false; b.textContent = 'Entrar';
+  await guardarCredencial(quem, senha);   // para a próxima entrada sem internet
+  desbloquear();
   iniciarSessao();
 }
 
 async function sair() {
   if (App.pendentes > 0 &&
       !confirm(`Há ${App.pendentes} registro(s) que ainda não subiram. Sair mesmo assim?`)) return;
-  await App.sb.auth.signOut();
+  travar();
+  await meta('credencial', null);
+  try { await App.sb.auth.signOut({ scope: App.online ? 'global' : 'local' }); }
+  catch (e) { try { await App.sb.auth.signOut({ scope: 'local' }); } catch (e2) {} }
   location.reload();
 }
 
 async function iniciarSessao() {
-  const { data: sessao } = await App.sb.auth.getSession();
-  if (!sessao || !sessao.session) { telaLogin(); return; }
+  if (!estaDesbloqueado()) { telaLogin(); return; }
 
-  // Quem é o usuário e quais locais ele enxerga
-  const { data: u } = await App.sb.schema('manutencao').from('usuarios')
-    .select('*').eq('id', sessao.session.user.id).maybeSingle();
-  App.usuario = u || { nome: sessao.session.user.email, perfil: 'CONSULTA' };
-  await meta('usuario', App.usuario);
+  if (App.online) {
+    const { data: sessao } = await App.sb.auth.getSession();
+    if (!sessao || !sessao.session) { travar(); telaLogin(); return; }
+    // Quem é o usuário e quais locais ele enxerga
+    const { data: u, error } = await App.sb.schema('manutencao').from('usuarios')
+      .select('*').eq('id', sessao.session.user.id).maybeSingle();
+    if (u) { App.usuario = u; await meta('usuario', u); }
+    else if (error) App.usuario = (await meta('usuario')) || { nome: sessao.session.user.email, perfil: 'CONSULTA' };
+    else App.usuario = { nome: sessao.session.user.email, perfil: 'CONSULTA' };
+  } else {
+    // Sem sinal: trabalha com o que já está no aparelho.
+    App.usuario = await meta('usuario');
+    if (!App.usuario) { travar(); telaLogin('Sem internet. A primeira entrada neste aparelho precisa de sinal.'); return; }
+  }
 
   $('#btn-sair').classList.remove('oculto');
 
@@ -591,9 +665,12 @@ async function iniciarSessao() {
   $('#tela').innerHTML = '<section class="carregando"><p>Baixando a programação para uso sem internet…</p></section>';
   // Primeiro sobe o que ficou pendente; depois a programação vem de novo
   // (muda todo dia e é pequena).
-  await sincronizar();
-  await baixarBase(true);
+  if (App.online) {
+    await sincronizar();
+    await baixarBase(true);
+  }
   await carregarDaBaseLocal();
+  if (!App.online) aviso('Sem internet: usando a programação guardada no aparelho. O que for lançado sobe quando o sinal voltar.');
 
   // O que essa pessoa enxerga: módulos, telas e o menu montado em cima disso.
   carregarAcesso(App.usuario);
@@ -631,7 +708,14 @@ function irPara(nome) {
 
 /* ---------------------------------------------------------------- partida */
 
-window.addEventListener('online',  () => { App.online = true;  pintarEstado(); sincronizar(); enviarFotos(); });
+window.addEventListener('online', async () => {
+  App.online = true; pintarEstado();
+  if (!App.sb || !App.usuario) return;
+  // entrou sem internet: confere se a sessão guardada ainda vale antes de enviar
+  const { data } = await App.sb.auth.getSession().catch(() => ({ data: null }));
+  if (!data || !data.session) return aviso('O sinal voltou, mas o login venceu. Saia e entre de novo para enviar o que ficou guardado.', true);
+  sincronizar(); enviarFotos();
+});
 window.addEventListener('offline', () => { App.online = false; pintarEstado(); });
 
 window.addEventListener('beforeunload', e => {
@@ -678,8 +762,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       autoRefreshToken: true,
       // Chave própria: o app de vistorias divide o mesmo endereço e o mesmo
       // projeto Supabase, e não pode ser derrubado quando este app fecha.
-      storageKey: 'gr.programacao.auth',
-      storage: guardaDaSessao(),
+      storageKey: 'gr.programacao.auth.v2',
+      storage: guardaPersistente(),
     },
   });
 
