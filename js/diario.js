@@ -15,6 +15,8 @@ const MAX_INFO = 2000;
 const MAX_FOTOS = 8;
 const AGRONOMO_PADRAO = 'Matheus Cassiano';
 const CARGO_AGRONOMO = 'Engenheiro Agrônomo';
+/* fundo da caixa de Informações e das fotos no PDF: cinza claro (a faixa do registro continua verde) */
+const CINZA_BLOCO = { faixa: '#ECEDE8', caixa: '#F5F5F2', linha: '#D3D5CD' };
 
 /* ---------------------------------------------------------------- fotos */
 
@@ -459,17 +461,34 @@ async function montarPdfDiario(d) {
   let y = 31;
   const grupos = gruposPorFazenda(d);
   const fazendas = grupos.map(g => g.nome);
-  doc.autoTable({
-    startY: y, margin: { left: M, right: M },
-    theme: 'grid',
-    head: [['Data', 'Agrônomo', 'Fazenda(s)', 'Registros']],
-    body: [[dataLonga(d.data), d.agronomo || '', fazendas.join(', '), String((d.visitas || []).length)]],
-    styles: { font: 'helvetica', fontSize: 9, textColor: COR.cinza, lineColor: COR.verdeLinha, lineWidth: 0.2,
-              cellPadding: 1.8, fillColor: COR.verdeClaro },
-    headStyles: { fillColor: COR.verde, textColor: COR.branco, fontStyle: 'bold', lineColor: COR.verde },
-    columnStyles: { 0: { cellWidth: 48 }, 1: { cellWidth: 52 }, 3: { cellWidth: 18, halign: 'center' } }
+  /* linha única com divisórias (opção B): rótulo pequeno, valor em destaque, detalhe embaixo */
+  const nReg = (d.visitas || []).length;
+  const diasSem = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+  const pd = partes(d.data);
+  const colunas = [
+    ['DATA', br(d.data), diasSem[new Date(pd.ano, pd.mes - 1, pd.dia).getDay()], 34],
+    ['RESPONSÁVEL TÉCNICO', d.agronomo || '—', CARGO_AGRONOMO, 58],
+    ['FAZENDAS', fazendas.join(' · ') || '—', `${fazendas.length} fazenda${fazendas.length === 1 ? '' : 's'}`, 66],
+    ['REGISTROS', String(nReg), 'no dia', W - 158],
+  ];
+  // a coluna de fazendas pode quebrar em mais de uma linha quando são muitas
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5);
+  const linhasCol = colunas.map(([, v, , w]) => doc.splitTextToSize(v, w - 6));
+  const nLin = Math.max(...linhasCol.map(l => l.length));
+  const altB = 14 + (nLin - 1) * 4.2;
+  let xc = M;
+  colunas.forEach(([rotulo, , detalhe, w], i) => {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(COR.cinzaClaro);
+    doc.text(rotulo, xc, y + 3.5, { charSpace: 0.5 });
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(COR.marrom);
+    doc.text(linhasCol[i], xc, y + 9);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(COR.cinza);
+    doc.text(detalhe, xc, y + 9 + (linhasCol[i].length - 1) * 4.2 + 4);
+    xc += w;
+    if (i < colunas.length - 1) { doc.setDrawColor(COR.verdeLinha); doc.setLineWidth(0.4); doc.line(xc - 4, y, xc - 4, y + altB); }
   });
-  y = doc.lastAutoTable.finalY + 6;
+  doc.setDrawColor(COR.verde); doc.setLineWidth(0.3); doc.line(M, y + altB + 3, L - M, y + altB + 3);
+  y += altB + 9;
 
   const novaFolha = () => { doc.addPage(); y = 14; };
 
@@ -543,7 +562,7 @@ async function montarPdfDiario(d) {
       const cabem = Math.max(1, Math.floor((BAIXO - y - 5) / hL));
       const parte = linhas.slice(k, k + cabem);
       const alt = parte.length * hL + 4;
-      doc.setFillColor(COR.verdeClaro); doc.setDrawColor(COR.verdeLinha); doc.setLineWidth(0.25);
+      doc.setFillColor(CINZA_BLOCO.caixa); doc.setDrawColor(CINZA_BLOCO.linha); doc.setLineWidth(0.25);
       doc.rect(M, y, W, alt, 'FD');
       doc.text(parte, M + 3, y + 4.8);
       y += alt; k += parte.length;
@@ -568,7 +587,7 @@ async function montarPdfDiario(d) {
         if (col === 0 && n > 0) y += hF + gap;
         if (col === 0 && y + hF > BAIXO) novaFolha();
         const x = M + col * (wF + gap);
-        doc.setFillColor(COR.verdeClaro); doc.setDrawColor(COR.verdeLinha); doc.setLineWidth(0.25);
+        doc.setFillColor(CINZA_BLOCO.caixa); doc.setDrawColor(CINZA_BLOCO.linha); doc.setLineWidth(0.25);
         doc.rect(x, y, wF, hF, 'FD');
         // encaixa a foto inteira na moldura, sem cortar
         const esc2 = Math.min(wF / img.w, hF / img.h);
