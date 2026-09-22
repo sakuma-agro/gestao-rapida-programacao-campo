@@ -271,8 +271,6 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 .rd-vis-lin + .rd-vis-lin{margin-top:3px}
 .rd-acoes{white-space:nowrap}
 .rd-acoes .btn{min-height:38px;padding:6px 12px;font-size:14px;margin:2px 0}
-.btn.rd-zap{background:#25A244}
-.btn.rd-zap:hover{background:#1E8A39}
 @media (max-width:900px){ .rd-grade{grid-template-columns:repeat(2,1fr)} }
 @media (max-width:640px){
   .rd-grade{grid-template-columns:1fr}
@@ -347,3 +345,11 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 .at-reabrir{border:1px solid var(--linha);background:var(--branco);color:var(--cinza-claro);font:inherit;font-size:12px;
   border-radius:99px;padding:4px 10px;cursor:pointer;white-space:nowrap}
 .at-reabrir:hover{color:var(--cinza);border-color:var(--cinza-claro)}
+
+/* botões da janela do PDF: WhatsApp nas cores dele, Baixar PDF em cinza, texto centralizado */
+.btn.btn-zap,.btn.btn-pdf{display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;text-align:center}
+.btn.btn-zap{background:#25D366;color:#fff}
+.btn.btn-zap:hover{background:#1EBE5A}
+.btn.btn-zap .ic-zap{width:26px;height:26px;flex:none;border-radius:6px;background:#fff;display:block}
+.btn.btn-pdf{background:#ECEDE8;color:var(--cinza);border:1px solid #D3D5CD}
+.btn.btn-pdf:hover{background:#E1E3DC}
