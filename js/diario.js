@@ -52,11 +52,30 @@ const mensagemDiario = d => {
   const linhas = [`*Relatório Diário (${br(d.data)})*`, 'SAKUMA Agronegócios'];
   if (d.codigo) linhas.push('Código: ' + d.codigo);
   if (d.agronomo) linhas.push(`${d.agronomo} - ${CARGO_AGRONOMO}`);
-  (d.visitas || []).forEach((v, i) => linhas.push(`${i + 1}. ${q.nome('fazendas', v.fazenda_id)} – ${q.nome('locais', v.local_id)}` +
-    (q.nome('culturas', v.cultura_id) ? ` (${q.nome('culturas', v.cultura_id)})` : '')));
+  let n = 0;
+  gruposPorFazenda(d).forEach(g => {
+    linhas.push('', `*${g.nome}*`);
+    g.visitas.forEach(v => linhas.push(`${++n}. ${q.nome('locais', v.local_id)}` +
+      (q.nome('culturas', v.cultura_id) ? ` (${q.nome('culturas', v.cultura_id)})` : '') + (v.plantio ? ` · ${v.plantio}` : '')));
+  });
   linhas.push('', 'Arquivo: ' + nomeArquivoDiario(d) + '.pdf');
   return linhas.join('\n');
 };
+
+/* Visitas agrupadas por fazenda (ordem do cadastro de fazendas); dentro da
+   fazenda, na ordem em que foram lançadas. Só muda a saída (PDF e WhatsApp). */
+function gruposPorFazenda(d) {
+  const ordem = {};
+  fazendasOrdenadas(false).forEach((f, i) => { ordem[f.id] = i; });
+  const grupos = new Map();
+  (d.visitas || []).forEach(v => {
+    if (!grupos.has(v.fazenda_id)) grupos.set(v.fazenda_id, []);
+    grupos.get(v.fazenda_id).push(v);
+  });
+  return [...grupos.entries()]
+    .sort((a, b) => (ordem[a[0]] ?? 999) - (ordem[b[0]] ?? 999))
+    .map(([id, visitas]) => ({ id, nome: q.nome('fazendas', id) || 'Sem fazenda', visitas }));
+}
 
 /* Espera o banco devolver o código. Sem internet, segue sem ele. */
 async function garantirCodigo(d) {
@@ -433,11 +452,12 @@ async function montarPdfDiario(d) {
 
   /* ---- dados do dia */
   let y = 31;
-  const fazendas = [...new Set((d.visitas || []).map(v => q.nome('fazendas', v.fazenda_id)).filter(Boolean))];
+  const grupos = gruposPorFazenda(d);
+  const fazendas = grupos.map(g => g.nome);
   doc.autoTable({
     startY: y, margin: { left: M, right: M },
     theme: 'grid',
-    head: [['Data', 'Agrônomo', 'Fazenda(s)', 'Visitas']],
+    head: [['Data', 'Agrônomo', 'Fazenda(s)', 'Registros']],
     body: [[dataLonga(d.data), d.agronomo || '', fazendas.join(', '), String((d.visitas || []).length)]],
     styles: { font: 'helvetica', fontSize: 9, textColor: COR.cinza, lineColor: COR.verdeLinha, lineWidth: 0.2,
               cellPadding: 1.8, fillColor: COR.verdeClaro },
@@ -448,23 +468,41 @@ async function montarPdfDiario(d) {
 
   const novaFolha = () => { doc.addPage(); y = 14; };
 
-  /* ---- visitas */
-  for (const [i, v] of (d.visitas || []).entries()) {
+  /* ---- visitas, fazenda por fazenda */
+  let i = -1;
+  for (const g of grupos) {
+    // faixa da fazenda: tudo dela sai em sequência logo abaixo
+    if (y > BAIXO - 55) novaFolha();
+    doc.setFillColor(COR.verde);
+    doc.rect(M, y, W, 10, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(COR.branco);
+    doc.text(g.nome.toUpperCase(), M + 3.5, y + 6.9);
+    doc.setFontSize(9);
+    doc.text(`${g.visitas.length} registro${g.visitas.length > 1 ? 's' : ''}`, L - M - 3.5, y + 6.6, { align: 'right' });
+    y += 13;
+
+  for (const v of g.visitas) {
+    i++;
     if (y > BAIXO - 40) novaFolha();
-    // faixa da visita
+    // faixa da visita: número + fazenda em destaque + local
     doc.setFillColor(COR.verdeTotal); doc.setDrawColor(COR.verdeLinha); doc.setLineWidth(0.3);
-    doc.rect(M, y, W, 7.5, 'FD');
-    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(COR.marrom);
-    doc.text(`${i + 1}. Registro da Visita`, M + 2.5, y + 5.1);
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(COR.cinza);
-    doc.text(`${q.nome('fazendas', v.fazenda_id)} · ${q.nome('locais', v.local_id)}`, L - M - 2.5, y + 5.1, { align: 'right' });
-    y += 7.5;
+    doc.rect(M, y, W, 8, 'FD');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(COR.cinza);
+    const rot = `${i + 1}. Registro  ·  `;
+    doc.text(rot, M + 2.5, y + 5.4);
+    const wRot = doc.getTextWidth(rot);
+    doc.setFontSize(11.5); doc.setTextColor(COR.marrom);
+    doc.text(g.nome, M + 2.5 + wRot, y + 5.4);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(COR.cinza);
+    doc.text(q.nome('locais', v.local_id), L - M - 2.5, y + 5.4, { align: 'right' });
+    y += 8;
 
     doc.autoTable({
       startY: y, margin: { left: M, right: M },
       theme: 'grid',
       head: [['Fazenda', 'Local / Talhão', 'Plantio', 'Cultura']],
-      body: [[q.nome('fazendas', v.fazenda_id), q.nome('locais', v.local_id), v.plantio || '—', q.nome('culturas', v.cultura_id)]],
+      body: [[{ content: q.nome('fazendas', v.fazenda_id), styles: { fontStyle: 'bold', textColor: COR.marrom } },
+              q.nome('locais', v.local_id), v.plantio || '—', q.nome('culturas', v.cultura_id)]],
       styles: { font: 'helvetica', fontSize: 9, textColor: COR.cinza, lineColor: COR.verdeLinha, lineWidth: 0.2,
                 cellPadding: 1.8, fillColor: COR.branco },
       headStyles: { fillColor: COR.verdeClaro, textColor: COR.marrom, fontStyle: 'bold', lineColor: COR.verdeLinha },
@@ -518,6 +556,7 @@ async function montarPdfDiario(d) {
       y += hF + 6;
     }
     y += 2;
+  }
   }
 
   /* ---- agrônomo: só o nome em negrito e o cargo, sem linha de assinatura */
