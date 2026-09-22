@@ -321,7 +321,7 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 
 /* ---------- tela inicial: acesso rápido na lateral (modelo B) ---------- */
 .ini-lateral{display:flex;gap:24px;align-items:flex-start}
-.ini-lateral .marca-inicio{flex:1;min-height:calc(100vh - 190px)}
+.ini-lateral .marca-inicio{flex:1;min-height:0;justify-content:flex-start;padding-top:clamp(20px,7vh,80px)}
 .ql{width:96px;flex:none;display:flex;flex-direction:column;gap:10px}
 .ql-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;
   border-radius:10px;background:var(--branco);border:1px solid var(--linha);color:var(--cinza);
