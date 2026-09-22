@@ -111,31 +111,50 @@ function marcarMenu(tela) {
 
 /* ---------------------------------------------------------------- tela de marca */
 
+/* Ícones dos atalhos (traço simples, cor do texto) */
+const ICONE_ATALHO = {
+  lancar: '<path d="M12 5v14M5 12h14"/>',
+  diario: '<path d="M7 3h8l4 4v14H7z"/><path d="M10 11h6M10 15h6"/>',
+  painel: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  reuniao: '<circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M15 20c0-2 1.5-3.5 4-3.5"/>',
+  relatorio: '<path d="M5 20V10M11 20V4M17 20v-7"/>',
+  atraso: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+};
+
 TELAS.marca = el => {
   document.body.classList.add('sem-rodape');
   const s = chaveSemana(hoje());
   const ativs = atividadesVisiveis();
   const daSemana = ativs.filter(a => mesmaSemana(a.data, s) && a.status !== 'Cancelado');
   const atrasadas = ativs.filter(a => statusDe(a) === 'Atrasado');
+  // acesso rápido na lateral (modelo B): ícone grande, nome embaixo, número no canto
+  const atalhos = [
+    { tela: 'lancar', icone: 'lancar', nome: 'Lançar atividade', classe: 'prim' },
+    { tela: 'diario', icone: 'diario', nome: 'Relatório diário' },
+    { tela: 'painel', icone: 'painel', nome: 'Painel anual' },
+    { tela: 'reuniao', icone: 'reuniao', nome: 'Reunião semanal', num: daSemana.length, dica: 'nesta semana' },
+    { tela: 'relatorio', icone: 'relatorio', nome: 'Relatórios em PDF' },
+    { tela: 'atividades', icone: 'atraso', nome: 'Atrasadas', num: atrasadas.length, alerta: true, filtro: 'Atrasado' },
+  ].filter(a => podeTela(a.tela));
   el.innerHTML = `
-    <section class="marca-inicio">
-      <img class="mi-sakuma" src="img/sakuma-marca-vertical.png" alt="SAKUMA Agronegócios">
-      <h2>Gestão Rápida <span>Programação Campo</span></h2>
-      <p class="mi-dica">Hoje é ${esc(diaSemana(hoje()))}, ${br(hoje())} — <strong>${esc(rotuloSemana(s))}</strong>.</p>
-      <div class="pc-atalhos">
-        <button type="button" class="btn" data-ir="lancar">Lançar atividade</button>
-        <button type="button" class="btn secundario" data-ir="diario">Relatório diário</button>
-        <button type="button" class="btn secundario" data-ir="painel">Painel anual</button>
-        <button type="button" class="btn secundario" data-ir="reuniao">Reunião semanal
-          <small>${daSemana.length} nesta semana</small></button>
-        ${atrasadas.length ? `<button type="button" class="btn pc-alerta" data-ir="atividades" data-filtro="Atrasado">
-          ${atrasadas.length} atrasada${atrasadas.length > 1 ? 's' : ''}</button>` : ''}
-      </div>
-      <div class="lop-ass mi-lop" role="img" aria-label="Desenvolvido por LOP — Inteligência para o agronegócio">
-    <img src="img/lop-marca.png" alt=""><span class="lop-div"></span>
-    <span class="lop-txt"><b>DESENVOLVIDO POR LOP</b><span>INTELIGÊNCIA PARA O AGRONEGÓCIO</span></span>
-  </div>
-    </section>`;
+    <div class="ini-lateral">
+      <nav class="ql" aria-label="Acesso rápido">
+        ${atalhos.map(a => `<button type="button" class="ql-item ${a.classe || ''}" data-ir="${a.tela}"${a.filtro ? ` data-filtro="${a.filtro}"` : ''}
+            title="${esc(a.nome)}${a.num !== undefined ? ` · ${a.num}${a.dica ? ' ' + a.dica : ''}` : ''}">
+          ${a.num !== undefined ? `<small class="ql-num${a.alerta && a.num ? ' alerta' : ''}">${a.num}</small>` : ''}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONE_ATALHO[a.icone]}</svg>
+          <span>${esc(a.nome)}</span></button>`).join('')}
+      </nav>
+      <section class="marca-inicio">
+        <img class="mi-sakuma" src="img/sakuma-marca-vertical.png" alt="SAKUMA Agronegócios">
+        <h2>Gestão Rápida <span>Programação Campo</span></h2>
+        <p class="mi-dica">Hoje é ${esc(diaSemana(hoje()))}, ${br(hoje())} — <strong>${esc(rotuloSemana(s))}</strong>.</p>
+        <div class="lop-ass mi-lop" role="img" aria-label="Desenvolvido por LOP — Inteligência para o agronegócio">
+          <img src="img/lop-marca.png" alt=""><span class="lop-div"></span>
+          <span class="lop-txt"><b>DESENVOLVIDO POR LOP</b><span>INTELIGÊNCIA PARA O AGRONEGÓCIO</span></span>
+        </div>
+      </section>
+    </div>`;
   el.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => {
     if (b.dataset.filtro) window.filtroInicialAtividades = { status: b.dataset.filtro };
     irPara(b.dataset.ir);
