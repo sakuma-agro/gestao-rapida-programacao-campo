@@ -313,3 +313,8 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 /* o arquivo do símbolo tem um fundo quase branco: "multiply" o deixa sumir sobre o fundo da tela, sem mexer no arquivo */
 .lop-ass img{mix-blend-mode:multiply}
 .lop-txt{text-align:left}
+
+/* atalhos da tela inicial: cinza padrão, discreto (só a ação principal em verde) */
+.pc-atalhos .btn.secundario{background:#ECEDE8;color:var(--cinza);border:1px solid #D3D5CD;font-weight:bold}
+.pc-atalhos .btn.secundario:hover{background:#E1E3DC;border-color:#C2C5BB}
+.pc-atalhos .btn.secundario small{color:var(--cinza-claro);opacity:1}
