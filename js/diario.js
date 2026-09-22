@@ -475,7 +475,13 @@ async function montarPdfDiario(d) {
 
   /* ---- visitas, fazenda por fazenda */
   let i = -1;
-  for (const g of grupos) {
+  for (const [gi, g] of grupos.entries()) {
+    // traço contínuo separando uma fazenda da outra
+    if (gi > 0 && y <= BAIXO - 55) {
+      doc.setDrawColor(COR.cinza); doc.setLineWidth(0.6);
+      doc.line(M, y + 1, L - M, y + 1);
+      y += 7;
+    }
     // faixa da fazenda: tudo dela sai em sequência logo abaixo
     if (y > BAIXO - 55) novaFolha();
     doc.setFillColor(COR.verde);
