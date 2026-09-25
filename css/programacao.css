@@ -360,3 +360,5 @@ body.modo-quadro .pc-rolagem{max-height:calc(100vh - 180px)}
 .rd-cfg-rot{margin:4px 0 6px;font-size:13px;color:var(--cinza-claro)}
 .rd-cfg-previa{background:#DCF8C6;border-radius:8px;padding:10px 14px;max-width:420px;font-size:15px;color:#303030;white-space:pre-wrap;
   box-shadow:0 1px 1px rgba(0,0,0,.08)}
+.rd-obs-geral{margin-top:18px}
+.rd-obs-geral header{background:#E3E4E0}
