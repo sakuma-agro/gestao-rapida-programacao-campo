@@ -152,6 +152,15 @@ TELAS.diario = el => {
     <div id="rd-existe"></div>
     <div id="rd-visitas"></div>
     <button type="button" class="btn neutro rd-mais" id="rd-mais">+ Adicionar outra visita</button>
+    <section class="rd-visita rd-obs-geral">
+      <header><h2>Observação geral</h2></header>
+      <div class="rd-corpo">
+        <div class="campo"><label for="rd-obs">Observação geral do dia (opcional)</label>
+          <textarea id="rd-obs" maxlength="${MAX_INFO}" rows="4"
+            placeholder="Resumo do dia, pendências, recomendações gerais, clima, etc.">${esc(d.observacao_geral || '')}</textarea>
+          <p class="ajuda rd-conta" id="rd-obs-conta">${(d.observacao_geral || '').length}/${MAX_INFO}</p></div>
+      </div>
+    </section>
     <div class="acoes">
       <button type="button" class="btn" id="rd-salvar">${novo ? 'Salvar' : 'Salvar alterações'}</button>
       <button type="button" class="btn secundario" id="rd-pdf">Salvar e gerar PDF / WhatsApp</button>
@@ -256,6 +265,9 @@ TELAS.diario = el => {
     desenhar();
   }
 
+  const obs = el.querySelector('#rd-obs');
+  obs.oninput = () => { d.observacao_geral = obs.value; el.querySelector('#rd-obs-conta').textContent = `${obs.value.length}/${MAX_INFO}`; };
+
   el.querySelector('#rd-mais').onclick = () => {
     const ult = d.visitas[d.visitas.length - 1];
     d.visitas.push(Object.assign(visitaVazia(), { fazenda_id: ult ? ult.fazenda_id : '' }));
@@ -299,6 +311,7 @@ TELAS.diario = el => {
       v.plantio = (v.plantio || '').trim();
       v.informacoes = v.informacoes.trim();
     }
+    d.observacao_geral = el.querySelector('#rd-obs').value.trim();
     const agora = new Date().toISOString();
     d.ativo = true;
     d.atualizado_em = agora;
@@ -370,7 +383,7 @@ TELAS.diarios = el => {
       (!f.agronomo || d.agronomo === f.agronomo) &&
       (!f.fazenda || (d.visitas || []).some(v => v.fazenda_id === f.fazenda)) &&
       (!b || [d.codigo, d.agronomo, br(d.data), ...(d.visitas || []).flatMap(v =>
-        [q.nome('fazendas', v.fazenda_id), q.nome('locais', v.local_id), q.nome('culturas', v.cultura_id), v.plantio, v.informacoes])]
+        [q.nome('fazendas', v.fazenda_id), q.nome('locais', v.local_id), q.nome('culturas', v.cultura_id), v.plantio, v.informacoes]), d.observacao_geral]
         .filter(Boolean).join(' ').toLowerCase().includes(b))
     ).sort((a, b2) => b2.data.localeCompare(a.data) || String(b2.codigo || '~').localeCompare(String(a.codigo || '~')));
   }
@@ -624,6 +637,36 @@ async function montarPdfDiario(d) {
       }
     } else y += 2;
   }
+  }
+
+  /* ---- observação geral do dia, no fim do relatório (só quando preenchida) */
+  const obsGeral = (d.observacao_geral || '').trim();
+  if (obsGeral) {
+    if (y > BAIXO - 30) novaFolha();
+    else {
+      doc.setDrawColor(COR.cinza); doc.setLineWidth(0.6);
+      doc.line(M, y + 1, L - M, y + 1);
+      y += 7;
+    }
+    doc.setFillColor(COR.cinza);
+    doc.rect(M, y, W, 9, 'F');
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(11.5); doc.setTextColor(COR.branco);
+    doc.text('OBSERVAÇÃO GERAL', M + 3.5, y + 6.2);
+    y += 12;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(COR.cinza);
+    const lObs = doc.splitTextToSize(obsGeral, W - 6);
+    const hO = 4.4;
+    let ko = 0;
+    while (ko < lObs.length) {
+      const cabem = Math.max(1, Math.floor((BAIXO - y - 5) / hO));
+      const parte = lObs.slice(ko, ko + cabem);
+      const alt = parte.length * hO + 4;
+      doc.setFillColor(CINZA_BLOCO.caixa); doc.setDrawColor(CINZA_BLOCO.linha); doc.setLineWidth(0.25);
+      doc.rect(M, y, W, alt, 'FD');
+      doc.text(parte, M + 3, y + 4.8);
+      y += alt; ko += parte.length;
+      if (ko < lObs.length) novaFolha();
+    }
   }
 
   /* sem assinatura no fim: o agrônomo já aparece no quadro do topo */
